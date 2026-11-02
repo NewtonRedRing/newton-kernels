@@ -53,3 +53,14 @@ All benchmark inputs are deterministically generated in the corresponding `bench
 ## Reimplementation and provenance policy
 
 The implementation uses generally known algorithms (Dijkstra, compressed sparse row, radix heaps, inverted indexes, percentile selection and SIMD byte comparison). Public performance writeups informed which *ideas* to evaluate; source files, constants and assembly from other competitors were not copied. Specific performance numbers from unrelated projects are not presented as NewtonKernels measurements. All changes must pass tests and independently generated edge cases before claiming equivalence.
+
+## Independent external library comparisons
+
+The earlier results in this document compare NewtonKernels algorithms internally.
+A separately measured [external competitor comparison](../benchmarks/results/epyc-vm-2026-11-02/REPORT.md)
+benchmarks the real C++ standard library (`std::count`) and Boost.Graph with
+identical fixtures, an output checksum gate, fixed compiler configuration,
+and alternating fresh-process runs. It is a synthetic VM screening benchmark,
+**not** a universal performance ranking. The optional Vince's CSV Parser
+comparison requires a separate competitor build and has not been measured
+on this VM.

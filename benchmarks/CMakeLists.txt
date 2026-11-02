@@ -6,3 +6,8 @@ target_link_libraries(newton_strategy_bench PRIVATE newton_graph newton_index)
 
 add_executable(newton_percentile_bench percentile_bench.cpp)
 target_link_libraries(newton_percentile_bench PRIVATE newton_analytics)
+
+option(NEWTON_EXTERNAL_BENCHMARKS "Build external library comparison benchmark (optional dependencies)" OFF)
+if(NEWTON_EXTERNAL_BENCHMARKS)
+  add_subdirectory(competitors)
+endif()

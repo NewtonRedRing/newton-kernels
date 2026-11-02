@@ -14,7 +14,7 @@ NewtonKernels provides independently linkable static libraries with stable, docu
 |---|---|---|
 | `NewtonKernels::core` | `cpu_features()` | CPU features available to current process |
 | `NewtonKernels::memory` | `MappedFile`, `AlignedBuffer` | Read-only mapped I/O, aligned storage |
-| `NewtonKernels::simd` | `find_byte()`, `count_byte()`, `ByteScanStrategy` | Scalar / AVX2 / AVX-512 runtime dispatch |
+| `NewtonKernels::simd` | `find_byte()`, `count_byte()`, explicit `ByteScanStrategy` | Scalar / AVX2 / AVX-512 runtime dispatch |
 | `NewtonKernels::parsing` | `CsvParser`, `for_each_delimited_record()` | Quoted CSV or zero-copy unquoted lines |
 | `NewtonKernels::index` | `InvertedIndex`, `IntersectionStrategy` | Selectable smallest-first / input-order intersection and phrase search |
 | `NewtonKernels::analytics` | `group_count()`, `hash_inner_join()`, `percentile_nearest_rank_using()` | Aggregation, exact select / full sort |
@@ -51,6 +51,18 @@ Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](
 ## Benchmarks
 
 `cmake -S . -B build/release -DNEWTON_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release` builds opt-in microbenchmarks. Benchmark output is *not* comparable across hosts without identical datasets, toolchains, CPU governors and build flags. See the [measured strategy comparison](docs/performance-comparison.md) and [`docs/benchmarking.md`](docs/benchmarking.md).
+
+## External comparisons (same machine, same inputs)
+
+An independent, opt-in [competitor benchmark suite](benchmarks/competitors/README.md) compares
+NewtonKernels with optimized C++ STL, Boost.Graph, and optionally Vince's CSV Parser.
+Each comparison checks the full result digest, retains both winners and losses, and
+exports raw JSON plus a Markdown report. Unlike internal algorithm comparisons,
+these are **real external implementations** built into the comparison harness.
+See the [local VM snapshot](benchmarks/results/epyc-vm-2026-11-02/REPORT.md)
+for measured STL/Boost results and exact environmental limitations.
+**Vince's CSV Parser has not yet been measured in this VM**; the opt-in dependency
+and CI workflow are configured for an external run and must pass before publishing claims.
 
 ## Limitations
 

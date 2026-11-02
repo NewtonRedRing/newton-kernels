@@ -1,0 +1,40 @@
+name: External competitor benchmarks
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'benchmarks/competitors/**'
+      - 'benchmarks/CMakeLists.txt'
+      - '.github/workflows/external-benchmarks.yml'
+      - 'src/**'
+      - 'include/**'
+permissions:
+  contents: read
+jobs:
+  comparison:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Boost headers and compiler
+        run: sudo apt-get update && sudo apt-get install -y libboost-dev g++ cmake
+      - name: Configure independent competitor adapters
+        run: |
+          cmake -S . -B build-ext -DCMAKE_BUILD_TYPE=Release \
+            -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=OFF \
+            -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
+            -DNEWTON_COMP_BENCH_WITH_BOOST=ON -DNEWTON_COMP_BENCH_WITH_VINCE=ON
+      - name: Build
+        run: cmake --build build-ext --target newton_compare --parallel 2
+      - name: Run equal-input/equal-output comparisons
+        run: |
+          python3 benchmarks/competitors/run.py \
+            --binary build-ext/benchmarks/competitors/newton_compare \
+            --out build-ext/comparison --include-vince --quick --rounds 2 --repetitions 5
+      - name: Upload raw reproducibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-benchmark-${{ github.sha }}
+          path: build-ext/comparison/
+          if-no-files-found: ignore
