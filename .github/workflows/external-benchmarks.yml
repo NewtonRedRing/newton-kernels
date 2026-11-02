@@ -30,7 +30,7 @@ jobs:
         run: |
           python3 benchmarks/competitors/run.py \
             --binary build-ext/benchmarks/competitors/newton_compare \
-            --out build-ext/comparison --include-vince --quick --rounds 2 --repetitions 5
+            --out build-ext/comparison --include-vince --rounds 3 --repetitions 7
       - name: Upload raw reproducibility evidence
         if: always()
         uses: actions/upload-artifact@v4
