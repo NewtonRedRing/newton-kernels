@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = ROOT / 'benchmarks/results/github-actions-2026-11-02-5889b44/results.json'
+SOURCE = ROOT / 'benchmarks/results/github-actions-2026-11-02-a3ccc65/results.json'
 DESTINATION = ROOT / 'showcase/data/results.json'
 EXTRA_SOURCE = ROOT / 'benchmarks/results/local-extended-2026-11-02/results.json'
 EXTRA_DESTINATION = ROOT / 'showcase/data/extended-results.json'
@@ -16,7 +16,7 @@ def main():
     p.add_argument('--check', action='store_true', help='Fail if the checked-in showcase data are stale')
     opts = p.parse_args()
     source = json.loads(SOURCE.read_text(encoding='utf-8'))
-    if not source.get('results') or not all(row.get('verified_equal_output') for row in source['results']):
+    if len(source.get('results', [])) != 22 or len({row.get('module') for row in source['results']}) != 8 or not all(row.get('verified_equal_output') for row in source['results']):
         raise SystemExit('Benchmark evidence must contain verified comparison pairs')
     for row in source['results']:
         competitor = row['competitor']

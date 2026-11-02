@@ -5,7 +5,7 @@ on:
     paths:
       - 'showcase/**'
       - 'tools/build_showcase.py'
-      - 'benchmarks/results/github-actions-2026-11-02-5889b44/results.json'
+      - 'benchmarks/results/github-actions-2026-11-02-a3ccc65/results.json'
       - 'benchmarks/results/local-extended-2026-11-02/results.json'
       - '.github/workflows/showcase-pages.yml'
   workflow_dispatch:

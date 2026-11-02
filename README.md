@@ -67,10 +67,11 @@ and CI workflow are configured for an external run and must pass before publishi
 
 ## External comparisons across all eight modules
 
-**Every outcome is published, including STL-reference wins.** The comparison suite now covers all eight modules across two distinct measured environments: the existing CI campaign for SIMD, parsing and graphs, plus a separate local VM campaign for `core`, `memory`, `index`, `analytics` and `parallel`. **Do not compare absolute timings between hosts.**
+**Every outcome is published, including STL-reference wins.** The latest successful GitHub Actions run measured **all 22 cases for all eight modules on the same runner**. A separate local VM campaign for five modules is retained as independent replication. **Do not compare absolute timings between hosts.**
 
 - [Complete capabilities and all measurement parameters](docs/capability-scorecard.md)
 - [All 16 newly verified five-module comparison pairs](docs/five-module-benchmarks.md)
+- [Unified 22-case same-run CI results, including all wins and losses](benchmarks/results/github-actions-2026-11-02-a3ccc65/REPORT.md)
 - [Previous six-case CI comparator measurements](docs/benchmark-dashboard.md)
 - [Professional interactive dashboard](showcase/index.html) — select the evidence campaign explicitly
 - [Reproduce the original benchmark adapters](benchmarks/competitors/README.md)

@@ -72,7 +72,7 @@ function renderCards(data){const metric=$('metric').value;const category=$('work
 async function boot(){
  renderModules();renderMatrix();
  try {
-  const sources=[['data/results.json','CI: SIMD / CSV / Graph'],['data/extended-results.json','Local VM: Core / Memory / Index / Analytics / Parallel']];
+  const sources=[['data/results.json','Same-run GitHub CI · all eight modules'],['data/extended-results.json','Local VM: Core / Memory / Index / Analytics / Parallel']];
   const sets={};for(const [file,name] of sources){const res=await fetch(file,{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();if(!data.results?.length || data.results.some(r=>!r.verified_equal_output))throw new Error('Unverified campaign '+file);sets[file]=data;}
   const choose=$('campaign');for(const [file,name] of sources){const opt=document.createElement('option');opt.value=file;opt.textContent=name;choose.append(opt);}
   const render=()=>{

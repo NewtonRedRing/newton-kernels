@@ -1,3 +1,5 @@
+**New unified same-run portfolio evidence:** [22 verified cases covering all eight modules](../benchmarks/results/github-actions-2026-11-02-a3ccc65/REPORT.md), including source/runner metadata and all slower results. The report below preserves the older six-case CI snapshot for historical comparison.
+
 # NewtonKernels: Verified C++ benchmark comparisons across all eight modules
 
 > **Evidence, not a universal ranking.** Same input data, same GitHub Actions runner,
