@@ -28,6 +28,8 @@ jobs:
         run: python3 tools/build_showcase.py --check
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Upload self-contained site
         uses: actions/upload-pages-artifact@v3
         with:
