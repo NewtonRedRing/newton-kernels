@@ -67,7 +67,7 @@ __attribute__((target("avx512f,avx512bw"))) std::size_t avx512_count(std::string
     return total;
 }
 #endif
-ScanFn select_find(ByteScanStrategy strategy) noexcept {
+ScanFn select_find([[maybe_unused]] ByteScanStrategy strategy) noexcept {
 #ifdef NEWTON_X86_GNU
     const auto cpu = newton::core::cpu_features();
     if ((strategy == ByteScanStrategy::Auto || strategy == ByteScanStrategy::Avx512) &&
@@ -77,7 +77,7 @@ ScanFn select_find(ByteScanStrategy strategy) noexcept {
 #endif
     return scalar_find;
 }
-ScanFn select_count(ByteScanStrategy strategy) noexcept {
+ScanFn select_count([[maybe_unused]] ByteScanStrategy strategy) noexcept {
 #ifdef NEWTON_X86_GNU
     const auto cpu = newton::core::cpu_features();
     if ((strategy == ByteScanStrategy::Auto || strategy == ByteScanStrategy::Avx512) &&

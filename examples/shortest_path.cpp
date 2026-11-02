@@ -1,6 +1,7 @@
 #include <newton/graph/csr_graph.hpp>
 #include <newton/graph/shortest_path.hpp>
 #include <iostream>
+#include <string>
 int main() {
     newton::graph::GraphBuilder builder(3);
     builder.add_edge(0, 1, 3);
