@@ -47,3 +47,11 @@ All variants are compiled in one `Release` executable for matching compiler and 
 - Generated `results.json` and `REPORT.md` are provenance artifacts. Do not promote them to a universal ranking.
 
 Sources: [Boost.Graph](https://github.com/boostorg/graph) (BSL-1.0), [Vince's CSV Parser](https://github.com/vincentlaucsb/csv-parser) (MIT). Their source is never copied into `newton-kernels`.
+
+## Published reproducibility evidence
+
+The [CI benchmark snapshot](../results/github-actions-2026-11-02-5889b44/REPORT.md)
+and its [raw measurements](../results/github-actions-2026-11-02-5889b44/results.json)
+cover scan, Boost.Graph, and Vince's CSV Parser on one runner. The
+[public comparison dashboard](../../docs/benchmark-dashboard.md)
+includes the wins, methodology, and limitations.

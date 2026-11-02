@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NewtonKernels performance evidence: complete C++ capability coverage, reproducible same-input benchmarks against STL, Boost.Graph and Vince's CSV Parser, including tradeoffs and limitations.">
+  <meta name="theme-color" content="#0b1020">
+  <title>NewtonKernels — Capabilities & Evidence</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="shell navbar">
+      <a class="brand" href="#top" aria-label="NewtonKernels home"><span class="brand-symbol" aria-hidden="true">N<span>.</span></span><span>Newton<span class="brand-strong">Kernels</span><small>Performance engineering</small></span></a>
+      <nav aria-label="Primary navigation"><a href="#benchmarks">Benchmarks</a><a href="#coverage">Capabilities</a><a href="#method">Methodology</a><a class="nav-code" href="https://github.com/NewtonRedRing/newton-kernels">GitHub <span aria-hidden="true">↗</span></a></nav>
+    </div>
+  </header>
+  <main id="main">
+    <section id="top" class="hero shell">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse"></span> C++20 · OPEN SOURCE · REPRODUCIBLE EVIDENCE</div>
+        <h1>Performance you can <em>verify.</em><br>Tradeoffs you can <em>see.</em></h1>
+        <p class="hero-lead">Eight modular computing libraries. Side-by-side tests against real C++ alternatives on <strong>identical input and execution environments</strong>—with the full results, including where competitors are stronger.</p>
+        <div class="hero-actions"><a class="btn primary" href="#benchmarks">Explore comparisons <span aria-hidden="true">↘</span></a><a class="btn secondary" href="https://github.com/NewtonRedRing/newton-kernels/tree/main/benchmarks/competitors">Reproduce results <span aria-hidden="true">↗</span></a></div>
+        <p class="hero-footnote">Development preview v0.1.0 · Public evidence, not a universal ranking.</p>
+      </div>
+      <div class="hero-panel" aria-label="Benchmark overview">
+        <div class="panel-top"><span>VERIFIED BENCHMARK SNAPSHOT</span><span class="live-dot">RECORDED CI</span></div>
+        <div class="panel-big"><span id="max-speedup">8.77</span><span class="unit">×</span></div>
+        <p class="panel-title">Largest observed latency ratio</p>
+        <p class="panel-note">Only on the specified tested workload. Not a blanket speed guarantee.</p>
+        <div class="panel-stats"><div><strong id="verified-count">6</strong><span>Verified comparisons</span></div><div><strong>3 / 8</strong><span>Modules externally compared</span></div></div>
+        <div class="thin-line"></div><p class="panel-source">AMD EPYC 7763 · GCC 13.3 · Ubuntu CI runner · Nov 2, 2026</p>
+      </div>
+    </section>
+    <section class="strip"><div class="shell strip-grid"><span><b>01</b> Identical fixtures</span><span><b>02</b> Same machine & compiler</span><span><b>03</b> Matching output digests</span><span><b>04</b> Full metric transparency</span></div></section>
+    <section id="benchmarks" class="shell section">
+      <div class="section-heading"><div><span class="kicker">01 / THE EVIDENCE</span><h2>Real workloads. Both sides of the result.</h2><p>Compare latency, derived throughput and observed peak process RSS. Figures below are read directly from the checked-in CI results, not marketing estimates.</p></div><a class="subtle-link" href="data/results.json">View raw JSON ↗</a></div>
+      <div class="controls" role="group" aria-label="Comparison controls"><div class="control-item"><label for="metric">Measured parameter</label><select id="metric"><option value="latency">Execution latency · lower is better</option><option value="throughput">Operation throughput · higher is better</option><option value="rss">Peak process RSS · lower is better*</option></select></div><div class="control-item"><label for="workload">Capability</label><select id="workload"><option value="all">All measured capabilities</option><option value="scan">SIMD scanning</option><option value="csv">CSV parsing</option><option value="graph">Graph shortest paths</option></select></div><div class="control-item"><label for="winner">Result</label><select id="winner"><option value="all">Show all outcomes</option><option value="newton">NewtonKernels ahead</option><option value="competitor">Competitor ahead</option><option value="equal">Comparable / tie</option></select></div></div>
+      <div class="results-context"><span><span class="legend-dot newton-dot"></span> NewtonKernels</span><span><span class="legend-dot competitor-dot"></span> External competitor</span><span class="result-count" id="shown-count">6 comparisons</span></div>
+      <div class="benchmark-list" id="benchmark-list" aria-live="polite"><p>Loading verified comparisons…</p></div>
+      <p class="footnote">* RSS is the peak of the full benchmark process, not isolated library allocation. The measured programs share fixture and runtime overhead; these values are shown for transparency, <strong>not</strong> as evidence of library-level memory superiority. Throughput is derived from timed work units and excludes fixture generation.</p>
+    </section>
+    <section class="section section-alt" id="coverage"><div class="shell"><div class="section-heading"><div><span class="kicker">02 / FULL CAPABILITY COVERAGE</span><h2>Everything in scope. Nothing concealed.</h2><p>The portfolio covers all eight public library modules. An unmeasured capability is explicitly identified as such—never presented as a victory.</p></div><span class="coverage-ratio">3 / 8 external comparisons</span></div><div id="module-grid" class="module-grid"></div>
+      <div class="coverage-key"><span class="key-dot verified"></span> External comparison measured <span class="key-dot pending"></span> External benchmark not yet available</div>
+    </div></section>
+    <section class="shell section" id="dimensions"><div class="section-heading"><div><span class="kicker">03 / MEASUREMENT INVENTORY</span><h2>Every parameter has a place.</h2><p>Not every parameter is available yet. This coverage matrix distinguishes direct measurements, derived values, and open work across all capabilities.</p></div></div><div class="table-scroll"><table class="matrix"><caption class="sr-only">Metric measurement coverage across NewtonKernels modules</caption><thead><tr><th scope="col">Parameter</th><th scope="col">SIMD</th><th scope="col">CSV</th><th scope="col">Graph</th><th scope="col">Other 5 modules</th></tr></thead><tbody id="metric-matrix"></tbody></table></div><p class="footnote">“Captured” does not imply apples-to-apples comparability. Input parsing, graph construction, throughput with additional threads, and feature completeness need separate benchmark designs.</p></section>
+    <section class="section section-alt" id="method"><div class="shell"><div class="section-heading"><div><span class="kicker">04 / RESEARCH-GRADE DISCLOSURE</span><h2>Show the methodology, not just the podium.</h2><p>Reproducibility is a feature. Benchmark sources, competing implementation versions, machine metadata, fixtures, raw samples, limitations, and CI provenance are all linked.</p></div></div><div class="method-grid"><article class="method-card"><span class="method-no">01</span><h3>Identical data</h3><p>Fixed deterministic seeds, matched workload counts and decoded-output digests before calculating performance differences.</p></article><article class="method-card"><span class="method-no">02</span><h3>Same environment</h3><p>Each pair runs on the same VM, compiler, build mode and configured worker count. This is a shared CI runner, not pinned-frequency bare metal.</p></article><article class="method-card"><span class="method-no">03</span><h3>Transparent tradeoffs</h3><p>Both times are shown; no winning case is silently dropped. Memory values are reported with attribution limitations.</p></article><article class="method-card"><span class="method-no">04</span><h3>Reproducible source</h3><p>Original NewtonKernels adapters are maintained here; competitor libraries are fetched separately at documented revisions, not copied into this repository.</p></article></div><div class="evidence-links"><a href="https://github.com/NewtonRedRing/newton-kernels/actions/runs/41484043676">Verified CI execution <span>↗</span></a><a href="https://github.com/NewtonRedRing/newton-kernels/blob/main/benchmarks/competitors/README.md">Harness & fairness notes <span>↗</span></a><a href="https://github.com/NewtonRedRing/newton-kernels/blob/main/docs/performance-comparison.md">Full technical report <span>↗</span></a><a href="data/results.json">Original machine results <span>↗</span></a></div></div></section>
+    <section class="shell callout"><div><span class="kicker">BUILD WITH EVIDENCE</span><h2>Use the best kernel <em>for your workload.</em></h2><p>Benchmark against your own input. Keep the winner, even if that means choosing another implementation.</p></div><a class="btn primary" href="https://github.com/NewtonRedRing/newton-kernels">Explore the C++ library ↗</a></section>
+  </main>
+  <footer><div class="shell footer-inner"><span>NewtonKernels <span class="muted">/ Benchmark evidence</span></span><span>Open source · MIT · C++20 · Development preview</span><a href="https://github.com/NewtonRedRing/newton-kernels">Source on GitHub ↗</a></div></footer>
+</body>
+</html>

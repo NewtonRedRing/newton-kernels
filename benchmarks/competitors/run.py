@@ -109,7 +109,13 @@ def report(rows, env):
                      f"{row['newton_median_ms']:.4f} | {row['competitor']} | "
                      f"{row['competitor_median_ms']:.4f} | {row['speedup']:.2f}× | "
                      f"`{row['checksum']}` |")
-    lines += ["", "## Interpretation", "",
+    lines += ["", "## Peak process memory (KiB)", "",
+              "| Workload | Size | NewtonKernels KiB | Competitor KiB |",
+              "|---|---:|---:|---:|",
+              *[f"| {r['operation']} | {r['size']} | "
+                f"{max(s['peak_process_rss_kib'] for s in r['samples']['newton'])} | "
+                f"{max(s['peak_process_rss_kib'] for s in r['samples'][r['competitor']])} |" for r in rows],
+              "", "## Interpretation", "",
               "Speedup = competitor median / NewtonKernels median; values below 1× mean NewtonKernels is slower.",
               "The median is calculated across alternating fresh processes, each reporting a median of in-process repetitions.",
               "Each pair was checked for equal digest and item count on the exact same generated fixture.",

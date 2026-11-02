@@ -64,3 +64,11 @@ and alternating fresh-process runs. It is a synthetic VM screening benchmark,
 **not** a universal performance ranking. The optional Vince's CSV Parser
 comparison requires a separate competitor build and has not been measured
 on this VM.
+
+### External third-party evidence now available
+
+[Independent external benchmark dashboard](benchmark-dashboard.md) reports six
+checksum-verified comparisons against STL, Boost.Graph and Vince's CSV Parser on
+one GitHub Actions runner. The artifact contains raw samples, environment and
+source revision; **these figures must not be combined with the earlier local VM
+microbenchmark numbers**.

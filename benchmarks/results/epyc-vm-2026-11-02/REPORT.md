@@ -5,7 +5,7 @@
 
 ## Environment
 
-- UTC: 2026-11-02T16:38:25.415700+00:00
+- UTC: 2026-11-02T16:42:45.812926+00:00
 - CPU: AMD EPYC 9V74 80-Core Processor (5 logical CPUs)
 - OS: Linux-6.18.57-x86_64-with-glibc2.41
 - Compiler: c++ (Debian 14.2.0-19) 14.2.0
@@ -18,10 +18,19 @@
 
 | Workload | Size | NewtonKernels median (ms) | Competitor | Competitor median (ms) | Newton speedup | Checksum |
 |---|---:|---:|---|---:|---:|---|
-| scan | 1048576 | 0.0123 | stl | 0.1582 | 12.88× | `20ade35340a3edfd` |
-| scan | 16777216 | 0.2847 | stl | 3.0012 | 10.54× | `c730870e6386478f` |
-| graph | 5000 | 5.9316 | boost | 11.0691 | 1.87× | `c9bce3c147c8dc2d` |
-| graph | 20000 | 43.7426 | boost | 103.5881 | 2.37× | `7f633daa6ec8faec` |
+| scan | 1048576 | 0.0135 | stl | 0.2097 | 15.58× | `20ade35340a3edfd` |
+| scan | 16777216 | 0.5540 | stl | 3.1954 | 5.77× | `c730870e6386478f` |
+| graph | 5000 | 6.3305 | boost | 13.6081 | 2.15× | `c9bce3c147c8dc2d` |
+| graph | 20000 | 50.5104 | boost | 126.3359 | 2.50× | `7f633daa6ec8faec` |
+
+## Peak process memory (KiB)
+
+| Workload | Size | NewtonKernels KiB | Competitor KiB |
+|---|---:|---:|---:|
+| scan | 1048576 | 96408 | 96408 |
+| scan | 16777216 | 96408 | 96408 |
+| graph | 5000 | 96408 | 96408 |
+| graph | 20000 | 96408 | 96408 |
 
 ## Interpretation
 

@@ -52,17 +52,27 @@ Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](
 
 `cmake -S . -B build/release -DNEWTON_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release` builds opt-in microbenchmarks. Benchmark output is *not* comparable across hosts without identical datasets, toolchains, CPU governors and build flags. See the [measured strategy comparison](docs/performance-comparison.md) and [`docs/benchmarking.md`](docs/benchmarking.md).
 
-## External comparisons (same machine, same inputs)
+## Verified external implementation comparisons
 
-An independent, opt-in [competitor benchmark suite](benchmarks/competitors/README.md) compares
-NewtonKernels with optimized C++ STL, Boost.Graph, and optionally Vince's CSV Parser.
-Each comparison checks the full result digest, retains both winners and losses, and
-exports raw JSON plus a Markdown report. Unlike internal algorithm comparisons,
-these are **real external implementations** built into the comparison harness.
-See the [local VM snapshot](benchmarks/results/epyc-vm-2026-11-02/REPORT.md)
-for measured STL/Boost results and exact environmental limitations.
-**Vince's CSV Parser has not yet been measured in this VM**; the opt-in dependency
-and CI workflow are configured for an external run and must pass before publishing claims.
+The reproducible [external benchmark dashboard](docs/benchmark-dashboard.md) compares the **real**
+C++ STL, Boost.Graph and Vince's CSV Parser implementations on identical inputs and one
+GitHub Actions machine. On the tested workloads, NewtonKernels measured **7.96–8.77×**
+less time for byte scanning, **1.93–2.14×** less time for target shortest paths,
+and **3.99–5.36×** less time for in-memory CSV decoding. All six comparisons
+passed output-digest checks. These are **specific synthetic benchmarks, not universal
+speed guarantees**. See the [raw data](benchmarks/results/github-actions-2026-11-02-5889b44/results.json),
+[methodology](benchmarks/competitors/README.md), [CI evidence](https://github.com/NewtonRedRing/newton-kernels/actions/runs/41484043676),
+and [independent local VM results](benchmarks/results/epyc-vm-2026-11-02/REPORT.md).
+
+## Explore the capability showcase
+
+**[Professional interactive showcase & complete scorecard](showcase/)** — displays all eight modules, every currently measured parameter, both competitors' figures, correctness evidence, latency, throughput, peak process RSS and unmeasured areas. The site has no cherry-picked winner filtering: competitor wins will be shown automatically.
+
+- [Full eight-module capability matrix](docs/capability-scorecard.md) · [verified side-by-side technical comparisons](docs/benchmark-dashboard.md)
+- [Reproduce the exact benchmark fixtures](benchmarks/competitors/README.md) · [machine raw results](benchmarks/results/github-actions-2026-11-02-5889b44/results.json)
+- [GitHub Pages publishing guide](showcase/README.md) · [Pages deployment workflow](.github/workflows/showcase-pages.yml)
+
+The showcased results come from a shared virtual CI runner, cover **three** of eight modules externally, and do not constitute universal superiority or library-specific RAM claims.
 
 ## Limitations
 
