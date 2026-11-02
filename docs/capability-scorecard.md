@@ -21,9 +21,9 @@
 | Latency, speed ratios | All 22 CI cases + 16 local VM cases | Compare only matching inputs within the same host and workflow |
 | Per-process median / minimum / maximum | 22 CI cases + 16 local VM cases | Inner 7 repetitions, alternating outer processes |
 | Derived throughput | 22 CI cases + 16 local VM cases | Units explicitly reported for each fixture |
-| Peak process RSS | 22 CI cases + 16 CI extended + 16 local VM cases | Whole process includes fixture/runtime; not incremental library memory |
-| CPU user/system time | 16 CI extended + 16 CI extended + 16 local VM cases | Whole process; includes warmup/fixture preparation |
-| Minor/major page faults | 16 CI extended + 16 CI extended + 16 local VM cases | Whole process, not specifically timed region |
+| Peak process RSS | 22 CI cases + 16 local VM cases | Whole process includes fixture/runtime; not incremental library memory |
+| CPU user/system time | 16 CI extended + 16 local VM cases | Whole process; includes warmup/fixture preparation |
+| Minor/major page faults | 16 CI extended + 16 local VM cases | Whole process, not specifically timed region |
 | Voluntary/involuntary context switches | 16 CI extended + 16 local VM cases | Whole process |
 | CPU model / OS / compiler / affinity | Both campaigns | VM governor unknown |
 | Binary SHA256 | Both campaigns | A reproducibility identifier, not code size |
