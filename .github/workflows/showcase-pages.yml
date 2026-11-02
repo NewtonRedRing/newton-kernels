@@ -27,10 +27,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Check evidence is verified and site data are current
         run: python3 tools/build_showcase.py --check
+      # Keep an inspectable static build even before Pages is enabled by an owner.
+      - name: Upload downloadable showcase preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: newton-kernels-site-preview
+          path: showcase/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+      # GitHub's default GITHUB_TOKEN cannot create the Pages site. An owner
+      # must select Settings -> Pages -> Source: GitHub Actions once.
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - name: Upload self-contained site
         uses: actions/upload-pages-artifact@v3
         with:
