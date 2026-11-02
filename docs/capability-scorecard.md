@@ -1,54 +1,44 @@
-# NewtonKernels — capabilities, competitors, and measurement completeness
+# NewtonKernels — complete portfolio capability and benchmark scorecard
 
-**Version:** development preview v0.1.0 · **Evidence snapshot:** 2026-11-02 · **Policy:** show every outcome, including competitors' advantages and unmeasured parameters.
+**Status:** C++20 development preview. Eight modules have matched-input C++ comparators across two **separate** benchmark campaigns. Five newly tested modules use independent standard-library reference implementations, not third-party package source.
 
-## Portfolio overview
+| Module | Scope benchmarked | Comparator | Data availability | Important missing capabilities |
+|---|---|---|---|---|
+| `core` | Repeated CPU feature detection | Same compiler builtins | **2 local VM pairs** | Target dispatch decision overhead; cross-architecture profiling |
+| `memory` | 64-byte aligned storage; mapped-file full scan | Aligned `operator new`; buffered `std::ifstream` | **4 local VM pairs** | Cold-cache I/O; pinned vs pageable memory; NUMA, per-library heap telemetry |
+| `simd` | Delimiter count | Optimized STL `std::count` | **2 CI pairs** | Search operations, varying target-byte frequency, small-buffer distributions |
+| `parsing` | Quoted CSV decode | Vince's CSV Parser | **2 CI pairs** | Streaming large files, CSV dialect detection, multi-threaded parsing, lifetime API |
+| `index` | Two-term Boolean AND; positional build | Independently written positional STL inverted index | **4 local VM pairs** | Phrase query comparison, Unicode, compression, persistent storage, variable term skew |
+| `analytics` | Group count and full duplicate-preserving join | Optimized STL hash aggregates and hash join | **4 local VM pairs** | Parallel group/join, larger joins, percentile competitor benchmark, allocation profiles |
+| `graph` | Source-to-target Dijkstra on weighted directed graph | Boost.Graph | **2 CI pairs** | Graph build timing, large graph / diverse topology, full-feature algorithm portfolio |
+| `parallel` | Four-worker batch tasks | 4-concurrent `std::async` | **2 local VM pairs** | True same-lifecycle thread pool baselines, 1–N thread scaling, queue depth and tail latency |
 
-| Library | Public capabilities | External benchmark | Current limitation |
-|---|---|---|---|
-| `core` | CPU feature detection, dispatch helpers | Not yet | No isolated external overhead comparison |
-| `memory` | Read-only mmap, aligned buffers | Not yet | Need cold/warm file I/O and allocator study |
-| `simd` | Scalar/AVX2/AVX-512 byte search and count | **Measured: optimized STL `std::count`** | Counting only, no vectorized search comparison |
-| `parsing` | Quoted CSV; borrowed, unquoted records | **Measured: Vince's CSV Parser** | In-memory, single-thread; Vince has additional features and parallel I/O modes |
-| `index` | Postings, Boolean AND, phrase search | Not yet | ASCII tokenization and no persistence/Unicode support |
-| `analytics` | Group count, joins, exact percentiles | Not yet | Internal sort vs selection comparison only |
-| `graph` | CSR, radix/binary Dijkstra, reusable workspaces | **Measured: Boost.Graph** | Shortest-path query only; graph build excluded and workspace policies differ |
-| `parallel` | Bounded task executor | Not yet | Need thread-count scaling, tail latency, contention benchmarks |
+## All reported parameters
 
-## External comparison parameters
-
-All six current external benchmark pairs use deterministic same-seed inputs, a single runner/compiler, repeated runs, and matching output hashes. Reported per-pair metrics:
-
-| Parameter | Available? | Trustworthy interpretation |
+| Parameter | Coverage | Caveat |
 |---|---|---|
-| Latency / time per operation | **Yes** | Median of independent process medians, lower is better |
-| Throughput | **Derived** | Same timed work units divided by measured latency; higher is better |
-| Speedup | **Derived** | Competitor time ÷ Newton time. Below 1.0× means competitor wins |
-| Per-process timing spread | **Yes** | Individual process timing medians in raw JSON |
-| Correctness / output digest | **Yes** | Equivalent digest and item counts on each matched fixture, not a formal proof |
-| Peak process resident memory | **Captured** | Whole-process measurement includes shared fixtures/runtime, **not an isolated library-memory comparison** |
-| Input sizes | **Yes** | Two sizes per measured operation, no exhaustive scaling study |
-| Build flags / compiler / operating system | **Yes** | Recorded in environment and workflow; implementations may have different internal codegen |
-| CPU affinity / governor / virtualization | **Partially** | Affinity and virtualization recorded; governor not available on CI |
-| CPU counters, cycles, IPC, cache misses | **No** | Must not invent numbers |
-| Power, energy efficiency | **No** | Requires suitable measurement hardware |
-| Cold cache / cold start | **No** | Current tests are warm repeated kernel measurements |
-| Thread scaling, contention, tail latency | **No** | Current external cases do not establish multicore scaling |
-| Graph build, CSV file I/O and output writing | **No** | Excluded in current timed regions |
-| Binary size, compile time, build dependencies | **Not externally benchmarked** | Separate install/build quality assessment needed |
-| API/feature parity | **Not fully assessed** | Competing libraries may provide broader capabilities |
-| Cross-architecture performance | **No** | Only one public CI x86-64 external comparison available |
+| Matching checksums and item counts | All 22 cases | Validated outputs for selected fixtures, not formal proof |
+| Latency, speed ratios | All 22 cases | Different hosts **never compared against each other** |
+| Per-process median / minimum / maximum | All 22 cases | Inner 7 repetitions, alternating outer processes |
+| Derived throughput | All 22 cases | Units explicitly reported for each fixture |
+| Peak process RSS | All 22 cases | Whole process includes fixture/runtime; not incremental library memory |
+| CPU user/system time | 16 local VM cases | Whole process; includes warmup/fixture preparation |
+| Minor/major page faults | 16 local VM cases | Whole process, not specifically timed region |
+| Voluntary/involuntary context switches | 16 local VM cases | Whole process |
+| CPU model / OS / compiler / affinity | Both campaigns | VM governor unknown |
+| Binary SHA256 | Both campaigns | A reproducibility identifier, not code size |
+| Build times / object-file size | Not measured | Avoid unmeasured comparisons |
+| Isolated allocations / malloc traffic | Not measured | Need allocator instrumentation |
+| Hardware cycles, cache misses, IPC | Not measured | Requires permitted perf hardware counters |
+| Energy/power/NUMA and GPU | Not measured | Hardware support not present |
+| Cold-cache and end-to-end application behavior | Not measured | Current synthetic hot-region workloads only |
+| Feature/OS parity across dependencies | Limited assessment | No claim of feature-equivalent products |
 
-## Public evidence
+## Evidence
 
-- [Interactive showcase](../showcase/index.html) (serve locally; deployment supported via GitHub Pages workflow).
-- [Raw matching-input results](../benchmarks/results/github-actions-2026-11-02-5889b44/results.json).
-- [CI-run summary](../benchmarks/results/github-actions-2026-11-02-5889b44/REPORT.md) and [official run record](https://github.com/NewtonRedRing/newton-kernels/actions/runs/41484043676).
-- [Exact adapter implementation and fairness notes](../benchmarks/competitors/README.md).
-- [Internal strategy benchmarks](performance-comparison.md) are **separate** from external-library measurements.
+- [CI results (six cases; established Boost and Vince comparators)](benchmark-dashboard.md)
+- [Local five-module report (all 16 cases, both wins and losses)](five-module-benchmarks.md)
+- [Reproduction instructions](../benchmarks/competitors/README.md)
+- [Interactive website with explicit host selection](../showcase/index.html)
 
-## How to extend without cherry-picking
-
-For each module, choose representative datasets (small, medium, large; uniform/skewed/adversarial), define exact equivalent output, add independent code adapters, run alternating randomized pairs, report every result including regressions, and track time, RSS, allocations and hardware counters if available. Compare single-thread and fixed-N thread configurations separately. On any failing/unsupported case, report **not comparable**, not a zero or a win.
-
-The interactive site filters on observed results and has no special case suppressing slower NewtonKernels outcomes. The current verified runs happen to favor NewtonKernels on time; that does **not** establish overall superiority across every capability.
+For public claims, cite the operation, input, host, software versions and date. A speed ratio under 1.0× must be shown as a competitor win; no unmeasured parameter should be silently omitted.

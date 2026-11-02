@@ -52,27 +52,30 @@ Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](
 
 `cmake -S . -B build/release -DNEWTON_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release` builds opt-in microbenchmarks. Benchmark output is *not* comparable across hosts without identical datasets, toolchains, CPU governors and build flags. See the [measured strategy comparison](docs/performance-comparison.md) and [`docs/benchmarking.md`](docs/benchmarking.md).
 
-## Verified external implementation comparisons
+## External comparisons (same machine, same inputs)
 
-The reproducible [external benchmark dashboard](docs/benchmark-dashboard.md) compares the **real**
-C++ STL, Boost.Graph and Vince's CSV Parser implementations on identical inputs and one
-GitHub Actions machine. On the tested workloads, NewtonKernels measured **7.96–8.77×**
-less time for byte scanning, **1.93–2.14×** less time for target shortest paths,
-and **3.99–5.36×** less time for in-memory CSV decoding. All six comparisons
-passed output-digest checks. These are **specific synthetic benchmarks, not universal
-speed guarantees**. See the [raw data](benchmarks/results/github-actions-2026-11-02-5889b44/results.json),
-[methodology](benchmarks/competitors/README.md), [CI evidence](https://github.com/NewtonRedRing/newton-kernels/actions/runs/41484043676),
-and [independent local VM results](benchmarks/results/epyc-vm-2026-11-02/REPORT.md).
+An independent, opt-in [competitor benchmark suite](benchmarks/competitors/README.md) compares
+NewtonKernels with optimized C++ STL, Boost.Graph, and optionally Vince's CSV Parser.
+Each comparison checks the full result digest, retains both winners and losses, and
+exports raw JSON plus a Markdown report. Unlike internal algorithm comparisons,
+these are **real external implementations** built into the comparison harness.
+See the [local VM snapshot](benchmarks/results/epyc-vm-2026-11-02/REPORT.md)
+for measured STL/Boost results and exact environmental limitations.
+**Vince's CSV Parser has not yet been measured in this VM**; the opt-in dependency
+and CI workflow are configured for an external run and must pass before publishing claims.
 
-## Explore the capability showcase
 
-**[Professional interactive showcase & complete scorecard](showcase/)** — displays all eight modules, every currently measured parameter, both competitors' figures, correctness evidence, latency, throughput, peak process RSS and unmeasured areas. The site has no cherry-picked winner filtering: competitor wins will be shown automatically.
+## External comparisons across all eight modules
 
-- [Full eight-module capability matrix](docs/capability-scorecard.md) · [verified side-by-side technical comparisons](docs/benchmark-dashboard.md)
-- [Reproduce the exact benchmark fixtures](benchmarks/competitors/README.md) · [machine raw results](benchmarks/results/github-actions-2026-11-02-5889b44/results.json)
-- [GitHub Pages publishing guide](showcase/README.md) · [Pages deployment workflow](.github/workflows/showcase-pages.yml)
+**Every outcome is published, including STL-reference wins.** The comparison suite now covers all eight modules across two distinct measured environments: the existing CI campaign for SIMD, parsing and graphs, plus a separate local VM campaign for `core`, `memory`, `index`, `analytics` and `parallel`. **Do not compare absolute timings between hosts.**
 
-The showcased results come from a shared virtual CI runner, cover **three** of eight modules externally, and do not constitute universal superiority or library-specific RAM claims.
+- [Complete capabilities and all measurement parameters](docs/capability-scorecard.md)
+- [All 16 newly verified five-module comparison pairs](docs/five-module-benchmarks.md)
+- [Previous six-case CI comparator measurements](docs/benchmark-dashboard.md)
+- [Professional interactive dashboard](showcase/index.html) — select the evidence campaign explicitly
+- [Reproduce the original benchmark adapters](benchmarks/competitors/README.md)
+
+The five-module competitors are independently authored standard-library references, not full competing high-level libraries. Peak RSS, CPU time, page faults and context switches are captured as **process-wide** diagnostics; cache-miss/IPC counters, energy, NUMA and allocation tracing have not been measured.
 
 ## Limitations
 

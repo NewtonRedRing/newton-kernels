@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 844" width="1080" height="844" role="img" aria-label="NewtonKernels vs C++ standard-library reference; blue bars right of 1x indicate Newton faster; ochre bars left indicate reference faster">
+<rect width="100%" height="100%" fill="#111827"/>
+<g font-family="system-ui, sans-serif">
+<text x="35" y="38" fill="#f8fafc" font-size="23" font-weight="700">Five-module benchmark • every result</text>
+<text x="35" y="63" fill="#94a3b8" font-size="13">Same input and process environment per pair • log2 speed ratio • synthetic workload • lower time is better</text>
+<line x1="520" y1="90" x2="520" y2="809" stroke="#b5bdcd" stroke-width="2" stroke-dasharray="4 6"/>
+<text x="527" y="88" fill="#cbd5e1" font-size="12">1.00×</text>
+<text x="330" y="86" fill="#f8b454" font-size="12">← STL reference faster</text>
+<text x="720" y="86" fill="#5fd7dd" font-size="12">NewtonKernels faster →</text>
+<text x="35" y="122" fill="#e2e8f0" font-size="14">core features</text>
+<text x="315" y="122" fill="#94a3b8" font-size="12">2,000</text>
+<rect x="456.47" y="105" width="63.53" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="123" fill="#e8a74c" font-size="14" font-weight="600">0.54×</text>
+<text x="835" y="123" fill="#cbd5e1" font-size="12">0.007 / 0.004 ms</text>
+<text x="35" y="166" fill="#e2e8f0" font-size="14">core features</text>
+<text x="315" y="166" fill="#94a3b8" font-size="12">200,000</text>
+<rect x="457.64" y="149" width="62.36" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="167" fill="#e8a74c" font-size="14" font-weight="600">0.55×</text>
+<text x="835" y="167" fill="#cbd5e1" font-size="12">0.717 / 0.392 ms</text>
+<text x="35" y="210" fill="#e2e8f0" font-size="14">memory align</text>
+<text x="315" y="210" fill="#94a3b8" font-size="12">1,024</text>
+<rect x="520.00" y="193" width="1.00" height="23" rx="4" fill="#4fcbd3"/>
+<text x="755" y="211" fill="#4fcbd3" font-size="14" font-weight="600">1.01×</text>
+<text x="835" y="211" fill="#cbd5e1" font-size="12">0.012 / 0.012 ms</text>
+<text x="35" y="254" fill="#e2e8f0" font-size="14">memory align</text>
+<text x="315" y="254" fill="#94a3b8" font-size="12">131,072</text>
+<rect x="502.20" y="237" width="17.80" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="255" fill="#e8a74c" font-size="14" font-weight="600">0.84×</text>
+<text x="835" y="255" fill="#cbd5e1" font-size="12">0.408 / 0.344 ms</text>
+<text x="35" y="298" fill="#e2e8f0" font-size="14">memory map</text>
+<text x="315" y="298" fill="#94a3b8" font-size="12">1,048,576</text>
+<rect x="519.18" y="281" width="1.00" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="299" fill="#e8a74c" font-size="14" font-weight="600">0.99×</text>
+<text x="835" y="299" fill="#cbd5e1" font-size="12">1.426 / 1.415 ms</text>
+<text x="35" y="342" fill="#e2e8f0" font-size="14">memory map</text>
+<text x="315" y="342" fill="#94a3b8" font-size="12">16,777,216</text>
+<rect x="520.00" y="325" width="1.51" height="23" rx="4" fill="#4fcbd3"/>
+<text x="755" y="343" fill="#4fcbd3" font-size="14" font-weight="600">1.01×</text>
+<text x="835" y="343" fill="#cbd5e1" font-size="12">20.127 / 20.425 ms</text>
+<text x="35" y="386" fill="#e2e8f0" font-size="14">index query</text>
+<text x="315" y="386" fill="#94a3b8" font-size="12">4,000</text>
+<rect x="520.00" y="369" width="26.87" height="23" rx="4" fill="#4fcbd3"/>
+<text x="755" y="387" fill="#4fcbd3" font-size="14" font-weight="600">1.30×</text>
+<text x="835" y="387" fill="#cbd5e1" font-size="12">0.079 / 0.102 ms</text>
+<text x="35" y="430" fill="#e2e8f0" font-size="14">index query</text>
+<text x="315" y="430" fill="#94a3b8" font-size="12">12,000</text>
+<rect x="520.00" y="413" width="21.52" height="23" rx="4" fill="#4fcbd3"/>
+<text x="755" y="431" fill="#4fcbd3" font-size="14" font-weight="600">1.23×</text>
+<text x="835" y="431" fill="#cbd5e1" font-size="12">0.616 / 0.760 ms</text>
+<text x="35" y="474" fill="#e2e8f0" font-size="14">index build</text>
+<text x="315" y="474" fill="#94a3b8" font-size="12">1,000</text>
+<rect x="516.06" y="457" width="3.94" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="475" fill="#e8a74c" font-size="14" font-weight="600">0.96×</text>
+<text x="835" y="475" fill="#cbd5e1" font-size="12">1.330 / 1.281 ms</text>
+<text x="35" y="518" fill="#e2e8f0" font-size="14">index build</text>
+<text x="315" y="518" fill="#94a3b8" font-size="12">4,000</text>
+<rect x="517.13" y="501" width="2.87" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="519" fill="#e8a74c" font-size="14" font-weight="600">0.97×</text>
+<text x="835" y="519" fill="#cbd5e1" font-size="12">4.865 / 4.731 ms</text>
+<text x="35" y="562" fill="#e2e8f0" font-size="14">analytics group</text>
+<text x="315" y="562" fill="#94a3b8" font-size="12">20,000</text>
+<rect x="518.53" y="545" width="1.47" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="563" fill="#e8a74c" font-size="14" font-weight="600">0.99×</text>
+<text x="835" y="563" fill="#cbd5e1" font-size="12">0.048 / 0.047 ms</text>
+<text x="35" y="606" fill="#e2e8f0" font-size="14">analytics group</text>
+<text x="315" y="606" fill="#94a3b8" font-size="12">200,000</text>
+<rect x="509.07" y="589" width="10.93" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="607" fill="#e8a74c" font-size="14" font-weight="600">0.90×</text>
+<text x="835" y="607" fill="#cbd5e1" font-size="12">0.539 / 0.485 ms</text>
+<text x="35" y="650" fill="#e2e8f0" font-size="14">analytics join</text>
+<text x="315" y="650" fill="#94a3b8" font-size="12">3,000</text>
+<rect x="504.61" y="633" width="15.39" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="651" fill="#e8a74c" font-size="14" font-weight="600">0.86×</text>
+<text x="835" y="651" fill="#cbd5e1" font-size="12">0.111 / 0.095 ms</text>
+<text x="35" y="694" fill="#e2e8f0" font-size="14">analytics join</text>
+<text x="315" y="694" fill="#94a3b8" font-size="12">12,000</text>
+<rect x="499.53" y="677" width="20.47" height="23" rx="4" fill="#e8a74c"/>
+<text x="755" y="695" fill="#e8a74c" font-size="14" font-weight="600">0.82×</text>
+<text x="835" y="695" fill="#cbd5e1" font-size="12">0.675 / 0.553 ms</text>
+<text x="35" y="738" fill="#e2e8f0" font-size="14">parallel tasks</text>
+<text x="315" y="738" fill="#94a3b8" font-size="12">50</text>
+<rect x="520.00" y="721" width="180.00" height="23" rx="4" fill="#4fcbd3"/>
+<text x="755" y="739" fill="#4fcbd3" font-size="14" font-weight="600">5.73×</text>
+<text x="835" y="739" fill="#cbd5e1" font-size="12">0.334 / 1.911 ms</text>
+<text x="35" y="782" fill="#e2e8f0" font-size="14">parallel tasks</text>
+<text x="315" y="782" fill="#94a3b8" font-size="12">20,000</text>
+<rect x="520.00" y="765" width="86.31" height="23" rx="4" fill="#4fcbd3"/>
+<text x="755" y="783" fill="#4fcbd3" font-size="14" font-weight="600">2.31×</text>
+<text x="835" y="783" fill="#cbd5e1" font-size="12">1.741 / 4.019 ms</text>
+<text x="35" y="832" fill="#94a3b8" font-size="12">Source: results.json | three alternating fresh processes | seven inner repetitions | ratios below 1.0× are real reference wins</text>
+</g>
+</svg>

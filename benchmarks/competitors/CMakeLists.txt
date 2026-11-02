@@ -48,3 +48,9 @@ if(NEWTON_COMP_BENCH_WITH_VINCE)
   endif()
   target_compile_definitions(newton_compare PRIVATE NEWTON_COMP_BENCH_VINCE)
 endif()
+
+# Independent C++20 standard-library baselines for the five additional modules.
+# These need no external code or network access.
+add_executable(newton_compare_extended extended.cpp)
+target_compile_features(newton_compare_extended PRIVATE cxx_std_20)
+target_link_libraries(newton_compare_extended PRIVATE newton_core newton_memory newton_index newton_analytics newton_parallel)

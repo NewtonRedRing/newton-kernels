@@ -25,12 +25,19 @@ jobs:
             -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
             -DNEWTON_COMP_BENCH_WITH_BOOST=ON -DNEWTON_COMP_BENCH_WITH_VINCE=ON
       - name: Build
-        run: cmake --build build-ext --target newton_compare --parallel 2
+        run: cmake --build build-ext --target newton_compare newton_compare_extended --parallel 2
       - name: Run equal-input/equal-output comparisons
         run: |
           python3 benchmarks/competitors/run.py \
             --binary build-ext/benchmarks/competitors/newton_compare \
             --out build-ext/comparison --include-vince --rounds 3 --repetitions 7
+      - name: Run five-module comparison on same CI runner
+        run: |
+          python3 benchmarks/competitors/run_extended.py \
+            --binary build-ext/benchmarks/competitors/newton_compare_extended \
+            --out build-ext/extended --rounds 3 --repetitions 7
+      - name: Render five-module win/loss chart
+        run: python3 benchmarks/competitors/chart_extended.py build-ext/extended/results.json build-ext/extended/comparison.svg
       - name: Render chart from verified measurements
         run: python3 benchmarks/competitors/chart.py build-ext/comparison/results.json build-ext/comparison/comparison.svg
       - name: Upload raw reproducibility evidence
@@ -38,5 +45,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: external-benchmark-${{ github.sha }}
-          path: build-ext/comparison/
+          path: |
+            build-ext/comparison/
+            build-ext/extended/
           if-no-files-found: ignore

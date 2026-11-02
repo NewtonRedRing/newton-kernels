@@ -30,3 +30,9 @@ The workflow `.github/workflows/showcase-pages.yml` publishes the `showcase/` di
 4. Show unmeasured areas as “Not measured,” not “coming wins”.
 5. All tested and reported input sizes remain visible in the data and available with an 'all' filter.
 6. Do not imply graph construction or CSV file-backed parallel parsing is included in current results.
+
+## Expanded eight-module evidence
+
+Use the **Benchmark host / campaign** selector to switch between the six-case CI run and the 16-case local VM study. These campaigns are not combined into one timing ranking. The same-input results include standard-library reference wins, and the CSV and Boost comparisons have a different host from the five-module study.
+
+The supported raw sources are [`data/results.json`](data/results.json) and [`data/extended-results.json`](data/extended-results.json). Refresh them from their separately committed original evidence with `python3 tools/build_showcase.py` and validate with `python3 tools/build_showcase.py --check`.

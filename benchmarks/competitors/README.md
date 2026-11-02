@@ -55,3 +55,25 @@ and its [raw measurements](../results/github-actions-2026-11-02-5889b44/results.
 cover scan, Boost.Graph, and Vince's CSV Parser on one runner. The
 [public comparison dashboard](../../docs/benchmark-dashboard.md)
 includes the wins, methodology, and limitations.
+
+## Additional five-module C++ standard-library reference benchmark
+
+The newly added `extended.cpp` is independently written and requires no external packages. The reference paths use C++ compiler CPU builtins, aligned `operator new`, `std::ifstream`, STL positional postings, `std::unordered_map` hash aggregation/join and bounded `std::async` tasks. **No competitor source is copied.** These are standard-facility baselines, not an endorsement that they represent every best-in-class third-party library.
+
+```bash
+cmake -S . -B build-external -DCMAKE_BUILD_TYPE=Release \
+  -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON
+cmake --build build-external --target newton_compare_extended --parallel
+python3 benchmarks/competitors/run_extended.py \
+  --binary build-external/benchmarks/competitors/newton_compare_extended \
+  --out build-external/five-module-results --rounds 3 --repetitions 7
+python3 benchmarks/competitors/chart_extended.py \
+  build-external/five-module-results/results.json \
+  build-external/five-module-results/comparison.svg
+```
+
+The extended suite measures two sizes for each of eight operations, covering five modules: `core_features`, `memory_align`, `memory_map`, `index_query`, `index_build`, `analytics_group`, `analytics_join` and `parallel_tasks`. All pairs require identical output signatures (digest, item count and input bytes) across every round; any mismatch aborts the run. Warmup and fixture generation are excluded from timed samples.
+
+The new report **retains competitor wins**, clearly marks the two hosts as incomparable, and shows process-wide peak RSS, user/system CPU time, page faults, context switches and full repeated timing samples when supported. The 2% 'approximately tied' display rule is **not a statistical confidence test**. Full third-party competitor breadth, GPU, cycles/IPC, energy, cold-cache I/O and isolated memory allocations remain unmeasured.
+
+[All 16 measured local comparisons](../../docs/five-module-benchmarks.md) are **not** part of the earlier [six-case GitHub Actions environment](../../docs/benchmark-dashboard.md). A fresh CI run will also generate a separate five-module artifact rather than overwriting this local evidence.

@@ -1,4 +1,4 @@
-# NewtonKernels: Verified external implementation comparisons
+# NewtonKernels: Verified C++ benchmark comparisons across all eight modules
 
 > **Evidence, not a universal ranking.** Same input data, same GitHub Actions runner,
 > same compiler and Release configuration, matching output checksum per benchmark.
@@ -7,7 +7,7 @@
 
 ![Verified NewtonKernels speedups](../benchmarks/results/github-actions-2026-11-02-5889b44/comparison.svg)
 
-## Verified comparison — GitHub Actions run, November 2, 2026
+## Established-library comparison — GitHub Actions run, November 2, 2026
 
 **CPU:** AMD EPYC 7763 (four visible CPUs) · **OS:** Ubuntu 24.04 GitHub-hosted Azure runner · **Compiler:** GCC 13.3.0 (C++20, Release) · **Boost:** 1.83 · **Vince:** source pinned to `86f1cab4fcb50a936475b5f778e8ee8c5dfe2259` · **Timing:** median of 3 alternating independent processes, each measuring 7 repetitions.
 
@@ -37,6 +37,12 @@
 Build and run our original adapters with optional competitor dependencies using the [reproduction instructions](../benchmarks/competitors/README.md). The project does **not** copy any competitor implementation code into its repository. The vendor dependency is built separately at a pinned source revision.
 
 Our local [EPYC VM report](../benchmarks/results/epyc-vm-2026-11-02/REPORT.md) independently measures the scan and Boost.Graph cases, but not CSV. Its timings are intentionally kept separate from the CI comparison.
+
+## Five additional modules on a separate local VM
+
+[All 16 comparisons, including competitor wins](five-module-benchmarks.md) are backed by [raw samples](../benchmarks/results/local-extended-2026-11-02/results.json) and the original C++ STL reference adapters. These measurements are on a **different host** and must not be combined with the CI timings. No third-party code was imported.
+
+![Five-module all-outcomes chart](../benchmarks/results/local-extended-2026-11-02/comparison.svg)
 
 ### Appropriate public claim
 
