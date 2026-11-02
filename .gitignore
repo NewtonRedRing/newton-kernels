@@ -19,3 +19,5 @@
 *.profdata
 compile_commands.json
 .DS_Store
+
+/build-perf/

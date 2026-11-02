@@ -44,6 +44,18 @@ void test_simd() {
     std::string s(300, 'z'); s[257] = ','; s[288] = ',';
     check(find_byte(s, ',') == 257, "simd find tail");
     check(count_byte(s, ',') == 2, "simd count");
+    for (auto strategy : {ByteScanStrategy::Auto, ByteScanStrategy::Scalar,
+                          ByteScanStrategy::Avx2, ByteScanStrategy::Avx512}) {
+        check(find_byte_using(s, ',', strategy) == 257, "strategy find");
+        check(count_byte_using(s, ',', strategy) == 2, "strategy count");
+        check(find_byte_using({}, ',', strategy) == 0, "strategy empty find");
+        check(count_byte_using({}, ',', strategy) == 0, "strategy empty count");
+        check(find_byte_using("abc", ',', strategy) == 3, "strategy absent find");
+        std::string binary(1027, '\0');
+        binary[1026] = '\x7f';
+        check(find_byte_using(binary, '\x7f', strategy) == 1026, "strategy binary tail");
+        check(count_byte_using(binary, '\0', strategy) == 1026, "strategy NUL scan");
+    }
     (void)newton::core::cpu_features();
 }
 void test_csv() {
@@ -99,6 +111,15 @@ void test_analytics() {
     check(percentile_nearest_rank(values, 0.0) == 10, "percentile zero");
     check(percentile_nearest_rank(values, 0.5) == 30, "percentile median");
     check(percentile_nearest_rank(values, 1.0) == 50, "percentile max");
+    for (const auto q : {0.0, 0.01, 0.5, 0.9, 1.0})
+        check(percentile_nearest_rank_using(values, q, PercentileStrategy::Selection) ==
+              percentile_nearest_rank_using(values, q, PercentileStrategy::FullSort),
+              "percentile strategies disagree");
+    const std::vector<std::uint64_t> duplicates{3, 3, 9, 1, 1, 7, 7};
+    for (const auto q : {0.0, 0.25, 0.5, 0.99, 1.0})
+        check(percentile_nearest_rank_using(duplicates, q, PercentileStrategy::Selection) ==
+              percentile_nearest_rank_using(duplicates, q, PercentileStrategy::FullSort),
+              "percentile duplicate rank mismatch");
     throws([&] { (void)percentile_nearest_rank(values, 2.0); }, "invalid percentile");
     const std::vector<int> data{1, 1, 2};
     const auto groups = group_count(data, [](int n) { return n; });

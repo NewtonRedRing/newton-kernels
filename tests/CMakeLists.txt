@@ -8,3 +8,7 @@ add_executable(newton_integration_tests integration/test_pipeline.cpp)
 target_compile_features(newton_integration_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_integration_tests PRIVATE newton_memory newton_parsing newton_analytics)
 add_test(NAME newton_integration_tests COMMAND newton_integration_tests)
+
+add_executable(newton_algorithm_tests unit/test_algorithms.cpp)
+target_link_libraries(newton_algorithm_tests PRIVATE newton_graph newton_index)
+add_test(NAME newton_algorithm_tests COMMAND newton_algorithm_tests)

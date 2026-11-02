@@ -8,11 +8,14 @@
 namespace newton::index {
 // Simple in-memory ASCII-alphanumeric positional inverted index.
 // Document identifiers are allocated monotonically from zero.
+enum class IntersectionStrategy { SmallestFirst, InputOrder };
+
 class InvertedIndex {
 public:
     using DocumentId = std::uint32_t;
     DocumentId add_document(std::string_view text);
-    [[nodiscard]] std::vector<DocumentId> search_all(std::string_view terms) const;
+    [[nodiscard]] std::vector<DocumentId> search_all(
+        std::string_view terms, IntersectionStrategy strategy = IntersectionStrategy::SmallestFirst) const;
     [[nodiscard]] std::vector<DocumentId> search_phrase(std::string_view phrase) const;
     [[nodiscard]] std::size_t document_count() const noexcept { return documents_; }
 private:

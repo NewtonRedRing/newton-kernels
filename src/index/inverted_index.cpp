@@ -5,7 +5,9 @@
 #include <utility>
 namespace newton::index {
 namespace {
-bool word_char(unsigned char c) noexcept { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'); }
+bool word_char(unsigned char c) noexcept {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+}
 std::vector<std::string> tokens(std::string_view s) {
     std::vector<std::string> out;
     std::string token;
@@ -29,56 +31,78 @@ InvertedIndex::DocumentId InvertedIndex::add_document(std::string_view text) {
     }
     return id;
 }
-std::vector<InvertedIndex::DocumentId> InvertedIndex::search_all(std::string_view text) const {
+std::vector<InvertedIndex::DocumentId> InvertedIndex::search_all(
+    std::string_view text, IntersectionStrategy strategy) const {
     const auto words = tokens(text);
     if (words.empty()) return {};
-    std::vector<DocumentId> hits;
-    for (std::size_t i = 0; i < words.size(); ++i) {
-        const auto it = terms_.find(words[i]);
+    std::vector<const std::vector<Posting>*> lists;
+    lists.reserve(words.size());
+    for (const auto& word : words) {
+        auto it = terms_.find(word);
         if (it == terms_.end()) return {};
-        const auto& postings = it->second;
-        if (i == 0) {
-            hits.reserve(postings.size());
-            for (const auto& p : postings) hits.push_back(p.id);
-        } else {
-            std::vector<DocumentId> next;
-            std::size_t a = 0, b = 0;
-            while (a < hits.size() && b < postings.size()) {
-                if (hits[a] == postings[b].id) { next.push_back(hits[a]); ++a; ++b; }
-                else if (hits[a] < postings[b].id) ++a;
-                else ++b;
-            }
-            hits = std::move(next);
+        lists.push_back(&it->second);
+    }
+    if (strategy == IntersectionStrategy::SmallestFirst) {
+        std::sort(lists.begin(), lists.end(), [](auto* a, auto* b) { return a->size() < b->size(); });
+    }
+    std::vector<DocumentId> hits;
+    hits.reserve(lists.front()->size());
+    for (const auto& p : *lists.front()) hits.push_back(p.id);
+    // In-place intersection avoids intermediate allocations.
+    for (std::size_t term = 1; term < lists.size() && !hits.empty(); ++term) {
+        const auto& postings = *lists[term];
+        std::size_t a = 0, b = 0, out = 0;
+        while (a < hits.size() && b < postings.size()) {
+            if (hits[a] == postings[b].id) { hits[out++] = hits[a++]; ++b; }
+            else if (hits[a] < postings[b].id) ++a;
+            else ++b;
         }
-        if (hits.empty()) return {};
+        hits.resize(out);
     }
     return hits;
 }
 std::vector<InvertedIndex::DocumentId> InvertedIndex::search_phrase(std::string_view phrase) const {
     const auto words = tokens(phrase);
     if (words.empty()) return {};
-    auto candidates = search_all(phrase);
-    std::vector<DocumentId> result;
-    for (DocumentId id : candidates) {
-        const auto& first = terms_.at(words.front());
-        const auto pos = std::lower_bound(first.begin(), first.end(), id,
-                             [](const Posting& p, DocumentId x) { return p.id < x; });
-        for (std::uint32_t start : pos->positions) {
+    std::vector<const std::vector<Posting>*> lists;
+    lists.reserve(words.size());
+    for (const auto& word : words) {
+        auto it = terms_.find(word);
+        if (it == terms_.end()) return {};
+        lists.push_back(&it->second);
+    }
+    std::size_t anchor = 0;
+    for (std::size_t i = 1; i < lists.size(); ++i)
+        if (lists[i]->size() < lists[anchor]->size()) anchor = i;
+    std::vector<DocumentId> matches;
+    for (const Posting& anchor_post : *lists[anchor]) {
+        const DocumentId doc = anchor_post.id;
+        // One binary search per term/doc, not per candidate position.
+        std::vector<const Posting*> same_doc(words.size());
+        same_doc[anchor] = &anchor_post;
+        bool possible = true;
+        for (std::size_t i = 0; i < lists.size(); ++i) {
+            if (i == anchor) continue;
+            const auto& entries = *lists[i];
+            const auto it = std::lower_bound(entries.begin(), entries.end(), doc,
+                [](const Posting& p, DocumentId x) { return p.id < x; });
+            if (it == entries.end() || it->id != doc) { possible = false; break; }
+            same_doc[i] = &*it;
+        }
+        if (!possible) continue;
+        for (const auto position : anchor_post.positions) {
+            if (position < anchor) continue;
+            const auto start = position - static_cast<std::uint32_t>(anchor);
+            if (words.size() - 1 > std::numeric_limits<std::uint32_t>::max() - start) continue;
             bool matching = true;
-            for (std::size_t i = 1; i < words.size(); ++i) {
-                if (i > std::numeric_limits<std::uint32_t>::max() - start) { matching = false; break; }
-                const auto& entries = terms_.at(words[i]);
-                const auto found = std::lower_bound(entries.begin(), entries.end(), id,
-                                     [](const Posting& p, DocumentId x) { return p.id < x; });
-                if (found == entries.end() || found->id != id ||
-                    !std::binary_search(found->positions.begin(), found->positions.end(), start + static_cast<std::uint32_t>(i))) {
-                    matching = false;
-                    break;
-                }
+            for (std::size_t i = 0; i < same_doc.size(); ++i) {
+                if (i == anchor) continue;
+                if (!std::binary_search(same_doc[i]->positions.begin(), same_doc[i]->positions.end(),
+                                        start + static_cast<std::uint32_t>(i))) { matching = false; break; }
             }
-            if (matching) { result.push_back(id); break; }
+            if (matching) { matches.push_back(doc); break; }
         }
     }
-    return result;
+    return matches;
 }
 } // namespace newton::index
