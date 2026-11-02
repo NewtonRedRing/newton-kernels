@@ -1,0 +1,149 @@
+#include <newton/analytics/group_by.hpp>
+#include <newton/analytics/hash_join.hpp>
+#include <newton/analytics/percentile.hpp>
+#include <newton/core/cpu_features.hpp>
+#include <newton/graph/csr_graph.hpp>
+#include <newton/graph/radix_heap.hpp>
+#include <newton/graph/shortest_path.hpp>
+#include <newton/index/inverted_index.hpp>
+#include <newton/memory/aligned_buffer.hpp>
+#include <newton/memory/mapped_file.hpp>
+#include <newton/parallel/executor.hpp>
+#include <newton/parsing/csv_parser.hpp>
+#include <newton/parsing/delimited_reader.hpp>
+#include <newton/simd/byte_scan.hpp>
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <vector>
+
+namespace {
+int assertions = 0;
+void check(bool ok, const char* what) {
+    ++assertions;
+    if (!ok) throw std::runtime_error(what);
+}
+template<class F> void throws(F fn, const char* what) {
+    try { fn(); } catch (const std::exception&) { ++assertions; return; }
+    throw std::runtime_error(what);
+}
+void test_simd() {
+    using namespace newton::simd;
+    check(find_byte({}, ',') == 0, "empty find");
+    check(count_byte({}, ',') == 0, "empty count");
+    check(find_byte("hello,world", ',') == 5, "first byte");
+    check(find_byte("hello", ',') == 5, "absent byte");
+    std::string s(300, 'z'); s[257] = ','; s[288] = ',';
+    check(find_byte(s, ',') == 257, "simd find tail");
+    check(count_byte(s, ',') == 2, "simd count");
+    (void)newton::core::cpu_features();
+}
+void test_csv() {
+    using namespace newton::parsing;
+    CsvParser parser;
+    std::vector<CsvRow> rows;
+    const auto count = parser.parse("name,comment\r\n\"A,B\",\"quote \"\"x\"\"\"\r\nx,\"line\nnext\"", [&](const CsvRow& r) { rows.push_back(r); });
+    check(count == 3 && rows.size() == 3, "CSV count");
+    check(rows[1][0] == "A,B" && rows[1][1] == "quote \"x\"", "CSV quotes");
+    check(rows[2][1] == "line\nnext", "CSV embedded newline");
+    check(parser.parse("", [](const CsvRow&) {}) == 0, "CSV empty");
+    throws([&] { (void)parser.parse("\"bad", [](const CsvRow&) {}); }, "unclosed quote");
+    throws([&] { (void)parser.parse("a\"b", [](const CsvRow&) {}); }, "invalid quote");
+    std::vector<std::vector<std::string>> simple;
+    for_each_delimited_record("a;b;\r\nc;;d\n", ';', [&](auto f) {
+        simple.emplace_back(f.begin(), f.end());
+    });
+    check(simple.size() == 2 && simple[0].size() == 3 && simple[0][2].empty(), "delimited trailing field");
+    check(simple[1].size() == 3 && simple[1][1].empty(), "delimited empty field");
+}
+void test_index() {
+    newton::index::InvertedIndex ix;
+    check(ix.add_document("Red blue RED") == 0, "index id 0");
+    check(ix.add_document("blue green") == 1, "index id 1");
+    check(ix.add_document("red blue green") == 2, "index id 2");
+    check((ix.search_all("RED blue") == std::vector<std::uint32_t>{0, 2}), "index AND");
+    check((ix.search_phrase("red blue") == std::vector<std::uint32_t>{0, 2}), "index phrase");
+    check(ix.search_phrase("green red").empty(), "index no phrase");
+    check(ix.search_all("missing").empty(), "index missing");
+}
+void test_graph() {
+    using namespace newton::graph;
+    GraphBuilder builder(5);
+    builder.add_edge(0, 1, 10);
+    builder.add_edge(0, 2, 2);
+    builder.add_edge(2, 1, 1);
+    builder.add_edge(1, 3, 4);
+    const auto graph = builder.build();
+    check(graph.node_count() == 5 && graph.edge_count() == 4, "CSR counts");
+    check(graph.neighbors(4).empty(), "CSR empty neighbors");
+    check(shortest_path(graph, 0, 3).value() == 7, "Dijkstra path");
+    check(shortest_path(graph, 4, 4).value() == 0, "Dijkstra identity");
+    check(!shortest_path(graph, 0, 4), "unreachable target");
+    throws([&] { builder.add_edge(9, 0, 1); }, "out of bounds edge");
+    RadixHeap heap;
+    heap.push(3, 1); heap.push(12, 2); heap.push(3, 3);
+    check(heap.pop().first == 3 && heap.pop().first == 3 && heap.pop().first == 12, "heap sorted");
+    throws([&] { heap.push(11, 4); }, "heap monotone invariant");
+}
+void test_analytics() {
+    using namespace newton::analytics;
+    const std::array<std::uint64_t, 5> values{10, 50, 20, 40, 30};
+    check(percentile_nearest_rank(values, 0.0) == 10, "percentile zero");
+    check(percentile_nearest_rank(values, 0.5) == 30, "percentile median");
+    check(percentile_nearest_rank(values, 1.0) == 50, "percentile max");
+    throws([&] { (void)percentile_nearest_rank(values, 2.0); }, "invalid percentile");
+    const std::vector<int> data{1, 1, 2};
+    const auto groups = group_count(data, [](int n) { return n; });
+    check(groups.at(1) == 2 && groups.at(2) == 1, "group count");
+    const std::vector<std::pair<int, int>> left{{1, 5}, {2, 6}};
+    const std::vector<std::pair<int, int>> right{{1, 7}, {1, 8}, {9, 10}};
+    int total = 0;
+    hash_inner_join(left, right, [](const auto& p) { return p.first; }, [](const auto& p) { return p.first; },
+        [&](const auto& l, const auto& r) { total += l.second + r.second; });
+    check(total == 25, "duplicate-preserving join");
+}
+void test_memory() {
+    newton::memory::AlignedBuffer<int, 64> buf(17);
+    check(buf.size() == 17 && reinterpret_cast<std::uintptr_t>(buf.data()) % 64 == 0, "aligned allocation");
+    const auto path = std::filesystem::temp_directory_path() / "newton-kernels-mapping-unit.tmp";
+    { std::ofstream out(path, std::ios::binary); out << "abc\n"; }
+    try {
+        newton::memory::MappedFile map(path);
+        check(map.size() == 4 && map.text() == "abc\n", "mapped contents");
+        auto moved = std::move(map);
+        check(moved.text() == "abc\n" && map.size() == 0, "mapped move");
+    } catch (...) { std::filesystem::remove(path); throw; }
+    std::filesystem::remove(path);
+}
+void test_parallel() {
+    newton::parallel::Executor executor(2);
+    check(executor.size() == 2, "worker count");
+    auto answer = executor.submit([] { return 42; });
+    check(answer.get() == 42, "future result");
+    std::atomic<int> visits{0};
+    executor.parallel_for(0, 100, 9, [&](std::size_t a, std::size_t b) { visits += static_cast<int>(b - a); });
+    check(visits == 100, "parallel partitions");
+    throws([&] { executor.parallel_for(0, 10, 0, [](auto, auto) {}); }, "invalid grain");
+    auto failed = executor.submit([]() -> void { throw std::runtime_error("intentional"); });
+    throws([&] { failed.get(); }, "future exception");
+}
+}
+int main() {
+    try {
+        test_simd(); test_csv(); test_index(); test_graph();
+        test_analytics(); test_memory(); test_parallel();
+        std::cout << "PASS " << assertions << " assertions\n";
+        return 0;
+    } catch (const std::exception& error) {
+        std::cerr << "FAIL: " << error.what() << '\n';
+        return 1;
+    }
+}

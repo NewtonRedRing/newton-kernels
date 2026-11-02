@@ -1,0 +1,3 @@
+Checks: '-*,bugprone-*,performance-*,modernize-use-nullptr,readability-implicit-bool-conversion'
+WarningsAsErrors: ''
+HeaderFilterRegex: 'include/newton/.*'

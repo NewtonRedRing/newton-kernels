@@ -1,0 +1,2 @@
+add_executable(newton_byte_bench byte_scan_bench.cpp)
+target_link_libraries(newton_byte_bench PRIVATE newton_simd)

@@ -1,0 +1,6 @@
+add_executable(newton_csv_example csv_processing.cpp)
+target_link_libraries(newton_csv_example PRIVATE newton_memory newton_parsing)
+add_executable(newton_graph_example shortest_path.cpp)
+target_link_libraries(newton_graph_example PRIVATE newton_graph)
+add_executable(newton_search_example text_search.cpp)
+target_link_libraries(newton_search_example PRIVATE newton_index)

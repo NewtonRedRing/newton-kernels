@@ -1,0 +1,10 @@
+add_executable(newton_unit_tests unit/test_main.cpp)
+target_compile_features(newton_unit_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_unit_tests PRIVATE newton_core newton_memory newton_simd
+  newton_parsing newton_index newton_analytics newton_graph newton_parallel)
+add_test(NAME newton_unit_tests COMMAND newton_unit_tests)
+
+add_executable(newton_integration_tests integration/test_pipeline.cpp)
+target_compile_features(newton_integration_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_integration_tests PRIVATE newton_memory newton_parsing newton_analytics)
+add_test(NAME newton_integration_tests COMMAND newton_integration_tests)
