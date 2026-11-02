@@ -20,7 +20,13 @@ python3 tools/build_showcase.py
 
 ## GitHub Pages publishing
 
-The workflow `.github/workflows/showcase-pages.yml` publishes the `showcase/` directory from the default branch after the repository owner enables **Settings → Pages → Build and deployment → GitHub Actions**. The intended Pages URL is `https://newtonredring.github.io/newton-kernels/`, but use the GitHub Pages deployment status as the authority for whether the site is live.
+The workflow `.github/workflows/showcase-pages.yml` validates the committed evidence and packages the `showcase/` directory. Every run uploads a **newton-kernels-site-preview** artifact first, available under the run's **Artifacts** section even before the public site is enabled.
+
+**One-time repository-owner action:** open [Settings → Pages](https://github.com/NewtonRedRing/newton-kernels/settings/pages), then under **Build and deployment → Source** choose **GitHub Actions**. After GitHub initializes Pages, rerun the [Publish capability showcase](https://github.com/NewtonRedRing/newton-kernels/actions/workflows/showcase-pages.yml) workflow (or push a change to `showcase/`).
+
+The default workflow `GITHUB_TOKEN` cannot initialize a Pages site: GitHub's `actions/configure-pages` explicitly requires an additional credential with administration and Pages write access for `enablement: true`. We do **not** store or request such a credential; the one-time owner setting is safer. After initialization, the standard `pages: write` and `id-token: write` workflow permissions are sufficient for publishing.
+
+Intended public address: `https://newtonredring.github.io/newton-kernels/`. Treat the actual GitHub Pages deployment result as authoritative; **do not announce the site live until deployment succeeds and the address loads**.
 
 ## Claims policy
 
