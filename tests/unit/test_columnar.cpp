@@ -77,7 +77,7 @@ void test_column_views() {
 void test_arrow() {
     const std::array<std::int64_t, 5> values{10, 20, 30, 40, 50};
     const std::array<std::uint8_t, 1> valid{0b00011011}; // valid bits 0,1,3,4
-    const std::array<const void*, 2> buffers{valid.data(), values.data()};
+    std::array<const void*, 2> buffers{valid.data(), values.data()};
     TestArrowArray array;
     array.length = 3;
     array.offset = 1;
