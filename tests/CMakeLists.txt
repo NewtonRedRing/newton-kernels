@@ -1,3 +1,10 @@
+# Fault-injection test: failed allocations must not consume an ID or
+# leave partial positional postings in the in-memory index.
+add_executable(newton_index_fault_tests unit/test_index_faults.cpp)
+target_compile_features(newton_index_fault_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_index_fault_tests PRIVATE newton_index)
+add_test(NAME newton_index_fault_tests COMMAND newton_index_fault_tests)
+
 add_executable(newton_unit_tests unit/test_main.cpp)
 target_compile_features(newton_unit_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_unit_tests PRIVATE newton_core newton_memory newton_simd
