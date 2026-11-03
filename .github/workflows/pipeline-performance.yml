@@ -29,6 +29,17 @@ jobs:
           cmake -S . -B fuzz-build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNEWTON_BUILD_FUZZERS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
           cmake --build fuzz-build --target newton_csv_fuzzer --parallel 2
           ./fuzz-build/fuzz/newton_csv_fuzzer -runs=5000 -max_len=512 -timeout=5
+      - name: Optional C ABI and language bridge smoke checks
+        run: |
+          cmake -S . -B cabi-build -DNEWTON_BUILD_C_API=ON -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build cabi-build --parallel 2
+          ctest --test-dir cabi-build --output-on-failure
+          python3 bindings/python/test_smoke.py ./cabi-build/libnewton_c.so
+          if command -v cargo >/dev/null; then
+            cargo check --manifest-path bindings/rust/newton-kernels-native/Cargo.toml
+          else
+            echo "Rust cargo unavailable on this runner — not validated here"
+          fi
       - name: Configure benchmark
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
       - name: Build benchmark
