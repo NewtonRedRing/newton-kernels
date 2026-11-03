@@ -27,7 +27,8 @@ inline std::size_t decode_csv_fields_into(
                 if (i == record.size()) throw std::invalid_argument("Unterminated CSV quote");
                 if (record[i] != '"') { ++i; continue; }
                 if (i + 1 < record.size() && record[i + 1] == '"') {
-                    if (used + (i - segment) + 1 > scratch.size())
+                    if (used > scratch.size() ||
+                        i - segment >= scratch.size() - used)
                         throw std::length_error("CSV decode scratch is too small");
                     for (auto n = segment; n < i; ++n) scratch[used++] = record[n];
                     scratch[used++] = '"';
@@ -37,7 +38,8 @@ inline std::size_t decode_csv_fields_into(
                     continue;
                 }
                 if (escaped) {
-                    if (used + (i - segment) > scratch.size())
+                    if (used > scratch.size() ||
+                        i - segment > scratch.size() - used)
                         throw std::length_error("CSV decode scratch is too small");
                     for (auto n = segment; n < i; ++n) scratch[used++] = record[n];
                     fields[count++] = std::string_view(scratch.data() + decoded_start, used - decoded_start);

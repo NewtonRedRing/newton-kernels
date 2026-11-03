@@ -29,6 +29,10 @@ inline std::size_t fused_join_group_sum_into(
     for (auto group : left_groups)
         if (static_cast<std::size_t>(group) >= group_counts.size())
             throw std::out_of_range("Fused join group key out of bounds");
+    // Check all caller-owned scratch before resetting output arrays.
+    // Invalid capacity is a precondition failure, not a partial aggregation.
+    if (hash_heads.empty() || hash_next.size() < right_keys.size())
+        throw std::length_error("Insufficient caller-owned join scratch");
     std::fill(group_counts.begin(), group_counts.end(), 0);
     std::fill(group_sums.begin(), group_sums.end(), 0);
     return flat_hash_join_into(left_keys, right_keys, hash_heads, hash_next,
