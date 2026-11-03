@@ -1,6 +1,6 @@
 # NewtonKernels v1: Architecture, Performance Strategy, and Implementation Roadmap
 
-> **Status:** PROPOSAL / DESIGN ONLY — not implemented or approved for release.
+> **Status:** v1 design reference; **some components have now been implemented as experimental v0.1 additions**. See [columnar and fused execution](columnar-and-fusion.md), [packaging](packaging-and-bindings.md) and [controlled benchmark evidence](fused-pipeline-evidence-2026-11-03.md). Complete v1 acceptance gates, API/ABI stability, bare-metal performance validation and comprehensive external integrations remain open.
 >
 > **Audit baseline:** NewtonRedRing/newton-kernels, main at `60be8ca898b307492b2109b305df2841a76c8ae0` (2026-11-02).
 >

@@ -22,6 +22,11 @@ jobs:
         run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
       - name: Install
         run: cmake --install build --config ${{ matrix.build_type }} --prefix stage
+      - name: Verify installed package in a separate consumer project
+        run: |
+          cmake -S tests/consumer -B consumer-build "-DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage" "-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}"
+          cmake --build consumer-build --config ${{ matrix.build_type }} --parallel 2
+          ctest --test-dir consumer-build -C ${{ matrix.build_type }} --output-on-failure
   sanitizers:
     runs-on: ubuntu-latest
     steps:
@@ -32,3 +37,14 @@ jobs:
         run: cmake --build build --parallel 2
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  fuzz-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Clang fuzz targets
+        run: cmake -S . -B fuzz-build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNEWTON_BUILD_FUZZERS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
+      - name: Build fuzz targets
+        run: cmake --build fuzz-build --target newton_csv_fuzzer --parallel 2
+      - name: Fuzz bounded randomized CSV inputs under sanitizers
+        run: ./fuzz-build/fuzz/newton_csv_fuzzer -runs=5000 -max_len=1024 -timeout=5

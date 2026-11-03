@@ -1,0 +1,127 @@
+name: Fused pipeline performance evidence
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "benchmarks/fused_pipeline_compare.cpp"
+      - "include/newton/analytics/csv_fused.hpp"
+      - "include/newton/analytics/csv_numeric_fast.hpp"
+      - "include/newton/columnar/**"
+      - "tests/unit/test_columnar.cpp"
+      - "src/c_api.cpp"
+      - "include/newton/c_api/**"
+      - "bindings/**"
+      - "fuzz/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/pipeline-performance.yml"
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Full source tests and separate installed-package consumer
+        run: |
+          cmake -S . -B check-build -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=ON -DNEWTON_WARNINGS_AS_ERRORS=ON
+          cmake --build check-build --parallel 2
+          ctest --test-dir check-build --output-on-failure
+          cmake --install check-build --prefix "${{ github.workspace }}/stage"
+          cmake -S tests/consumer -B consumer-build "-DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage" -DCMAKE_BUILD_TYPE=Release
+          cmake --build consumer-build --parallel 2
+          ctest --test-dir consumer-build --output-on-failure
+      - name: Clang libFuzzer smoke under ASan and UBSan
+        run: |
+          cmake -S . -B fuzz-build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNEWTON_BUILD_FUZZERS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
+          cmake --build fuzz-build --target newton_csv_fuzzer --parallel 2
+          ./fuzz-build/fuzz/newton_csv_fuzzer -runs=5000 -max_len=512 -timeout=5
+      - name: Optional C ABI and language bridge smoke checks
+        run: |
+          cmake -S . -B cabi-build -DNEWTON_BUILD_C_API=ON -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build cabi-build --parallel 2
+          ctest --test-dir cabi-build --output-on-failure
+          python3 bindings/python/test_smoke.py ./cabi-build/libnewton_c.so
+          if command -v cargo >/dev/null; then
+            cargo check --manifest-path bindings/rust/newton-kernels-native/Cargo.toml
+          else
+            echo "Rust cargo unavailable on this runner — not validated here"
+          fi
+      - name: Configure benchmark
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
+      - name: Build benchmark
+        run: cmake --build build --target newton_pipeline_compare --parallel 2
+      - name: Generate identical input fixtures once, outside trials
+        run: |
+          mkdir -p evidence
+          ./build/benchmarks/newton_pipeline_compare --save-fixture=evidence/input-100k.csv --rows=100000
+          ./build/benchmarks/newton_pipeline_compare --save-fixture=evidence/input-1000k.csv --rows=1000000
+          sha256sum evidence/input-*.csv | tee evidence/input-hashes.txt
+      - name: Verify exact output equality for both datasets
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          binary = "./build/benchmarks/newton_pipeline_compare"
+          for name in ("100k", "1000k"):
+              shared = f"evidence/input-{name}.csv"
+              answers = [
+                  json.loads(subprocess.check_output(
+                      [binary, f"--impl={mode}", f"--input={shared}"], text=True))
+                  for mode in ("owned", "fused", "fast")
+              ]
+              assert answers[0] == answers[1] == answers[2], (name, answers)
+              print("Exact output parity:", name, answers[0])
+          PY
+      - name: Same-host ABBA trials — optimized single-pass 100k
+        run: |
+          python3 tools/benchmark_ab.py \
+            --before "./build/benchmarks/newton_pipeline_compare --impl=owned --input=evidence/input-100k.csv" \
+            --after "./build/benchmarks/newton_pipeline_compare --impl=fast --input=evidence/input-100k.csv" \
+            --cycles 12 --warmup 2 --output evidence/pipeline-fast-100k.json
+      - name: Same-host ABBA trials — 100k rows
+        run: |
+          python3 tools/benchmark_ab.py \
+            --before "./build/benchmarks/newton_pipeline_compare --impl=owned --input=evidence/input-100k.csv" \
+            --after "./build/benchmarks/newton_pipeline_compare --impl=fused --input=evidence/input-100k.csv" \
+            --cycles 12 --warmup 2 --output evidence/pipeline-100k.json
+      - name: Same-host ABBA trials — optimized single-pass 1M
+        run: |
+          python3 tools/benchmark_ab.py \
+            --before "./build/benchmarks/newton_pipeline_compare --impl=owned --input=evidence/input-1000k.csv" \
+            --after "./build/benchmarks/newton_pipeline_compare --impl=fast --input=evidence/input-1000k.csv" \
+            --cycles 12 --warmup 2 --output evidence/pipeline-fast-1000k.json
+      - name: Same-host ABBA trials — 1M rows
+        run: |
+          python3 tools/benchmark_ab.py \
+            --before "./build/benchmarks/newton_pipeline_compare --impl=owned --input=evidence/input-1000k.csv" \
+            --after "./build/benchmarks/newton_pipeline_compare --impl=fused --input=evidence/input-1000k.csv" \
+            --cycles 12 --warmup 2 --output evidence/pipeline-1000k.json
+      - name: Upload all raw samples and input hashes
+        uses: actions/upload-artifact@v4
+        with:
+          name: newton-pipeline-same-host-evidence
+          path: evidence/
+          if-no-files-found: error
+
+  cross-platform:
+    name: Installed package and tests on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure library and optional C ABI
+        run: cmake -S . -B cross-build -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=ON -DNEWTON_BUILD_C_API=ON -DNEWTON_WARNINGS_AS_ERRORS=ON -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build cross-build --config Release --parallel 2
+      - name: Run differential tests
+        run: ctest --test-dir cross-build -C Release --output-on-failure
+      - name: Install to isolated prefix
+        run: cmake --install cross-build --config Release --prefix "${{ github.workspace }}/cross-stage"
+      - name: Configure standalone installed-package consumer
+        run: cmake -S tests/consumer -B cross-consumer "-DCMAKE_PREFIX_PATH=${{ github.workspace }}/cross-stage" -DCMAKE_BUILD_TYPE=Release
+      - name: Build standalone consumer
+        run: cmake --build cross-consumer --config Release --parallel 2
+      - name: Run installed consumer
+        run: ctest --test-dir cross-consumer -C Release --output-on-failure

@@ -1,0 +1,8 @@
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  message(FATAL_ERROR "NEWTON_BUILD_FUZZERS requires Clang with libFuzzer")
+endif()
+add_executable(newton_csv_fuzzer csv_fuzz.cpp)
+target_compile_features(newton_csv_fuzzer PRIVATE cxx_std_20)
+target_link_libraries(newton_csv_fuzzer PRIVATE newton_parsing newton_analytics)
+target_compile_options(newton_csv_fuzzer PRIVATE -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
+target_link_options(newton_csv_fuzzer PRIVATE -fsanitize=fuzzer,address,undefined)

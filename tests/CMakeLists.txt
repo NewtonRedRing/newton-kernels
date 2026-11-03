@@ -23,3 +23,8 @@ add_executable(newton_portfolio_tests unit/test_native_portfolio.cpp)
 target_compile_features(newton_portfolio_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_portfolio_tests PRIVATE newton_graph newton_analytics newton_index newton_parsing newton_simd newton_parallel)
 add_test(NAME newton_portfolio_tests COMMAND newton_portfolio_tests)
+
+add_executable(newton_columnar_tests unit/test_columnar.cpp)
+target_compile_features(newton_columnar_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_columnar_tests PRIVATE newton_analytics newton_parsing)
+add_test(NAME newton_columnar_tests COMMAND newton_columnar_tests)
