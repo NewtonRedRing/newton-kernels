@@ -20,6 +20,10 @@ inline bool advise_bytes(std::span<const std::byte> bytes, MemoryHint hint) noex
     if (page <= 0) return false;
     const auto size = static_cast<std::uintptr_t>(page);
     const auto start = reinterpret_cast<std::uintptr_t>(bytes.data());
+    // MADV_DONTNEED can discard modifications of OTHER allocations sharing
+    // the same page. Never round such a request outside the caller's span.
+    if (hint == MemoryHint::DontNeed &&
+        (start % size != 0 || bytes.size() % size != 0)) return false;
     if (bytes.size() > std::numeric_limits<std::uintptr_t>::max() - start)
         return false;
     const auto low = start - start % size;
