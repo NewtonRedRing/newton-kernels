@@ -15,3 +15,7 @@ endif()
 add_executable(newton_native_primitives_bench native_primitives_bench.cpp)
 target_compile_features(newton_native_primitives_bench PRIVATE cxx_std_20)
 target_link_libraries(newton_native_primitives_bench PRIVATE newton_analytics)
+
+add_executable(newton_pipeline_compare fused_pipeline_compare.cpp)
+target_compile_features(newton_pipeline_compare PRIVATE cxx_std_20)
+target_link_libraries(newton_pipeline_compare PRIVATE newton_parsing newton_analytics newton_memory)

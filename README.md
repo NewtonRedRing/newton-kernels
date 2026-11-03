@@ -48,6 +48,10 @@ target_link_libraries(your_app PRIVATE NewtonKernels::parsing NewtonKernels::mem
 
 Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](examples/) and [`docs/getting-started.md`](docs/getting-started.md).
 
+## Columnar data and fused execution
+
+New [borrowed columnar views, Arrow C Data Interface-compatible adapters, and fused CSV aggregation](docs/columnar-and-fusion.md) are provided as synchronous, caller-owned C++20 APIs. `NewtonKernels::columnar` is a header-only CMake target. The optional Arrow interoperability does not require an Arrow library or service. The new APIs are experimental pending performance and fuzz-testing evidence.
+
 ## v1 architecture proposal (design only)
 
 The [proposed NewtonKernels v1 architecture and gate-driven implementation roadmap](docs/v1-architecture-roadmap.md) documents a **zero-central-runtime** direction: direct C++20 APIs, independent static modules, no mandatory context/JIT/daemon/autotuner, caller-owned buffers, optional AOT hardware dispatch, columnar batches and end-to-end benchmark requirements. **This is a design proposal, not an implemented or released feature.**
@@ -59,6 +63,21 @@ The [optimization techniques and validation report](docs/optimization-techniques
 ## Native acceleration primitives (opt-in)
 
 In addition to the existing eight modules, independently authored headers provide AOT AVX2 multidelimiter scanning, PCLMUL quote masks, borrowed CSV decoding, checked numeric/timestamp parsers, packed exception records, exact open-addressed hash aggregation and joins, query-first hybrid posting lists, reusable bidirectional shortest paths, explicit OS memory/CPU affinity controls and caller-owned phase timing. These APIs use **no central runtime, background daemon, JIT, mandatory context or implicit threads**. Every feature is conditional on its documented input domain; new kernels have **not** been proven universally fastest. See the [native acceleration guide](docs/native-acceleration-guide.md) and [opt-in build and profiling guide](docs/build-and-profile.md).
+
+## Optional language integrations and package tools
+
+The [packaging and bindings guide](docs/packaging-and-bindings.md) describes the
+optional in-process C ABI, Python ctypes and Rust FFI wrappers, Conan 2 local
+recipe and vcpkg overlay. These are **not** published registry packages or
+mandatory dependencies, and they do not add a central runtime.
+
+## Verified experimental fused CSV benchmark
+
+The specialized [single-pass numeric parser and aggregate](docs/columnar-and-fusion.md)
+was measured against the existing parser on an equal-output, same-host
+100K/1M-row fixture. It achieved **1.25× / 1.39×** in that specific runner
+campaign; the earlier general fused path **lost** to the owned parser.
+See [raw-sample provenance and caveats](docs/fused-pipeline-evidence-2026-11-03.md).
 
 ## Benchmarks
 

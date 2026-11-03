@@ -8,6 +8,8 @@ include(CTest)
 option(NEWTON_BUILD_TESTS "Build unit and integration tests" ${BUILD_TESTING})
 option(NEWTON_BUILD_EXAMPLES "Build usage examples" ON)
 option(NEWTON_BUILD_BENCHMARKS "Build deterministic microbenchmarks" OFF)
+option(NEWTON_BUILD_FUZZERS "Build optional Clang/libFuzzer targets" OFF)
+option(NEWTON_BUILD_C_API "Build optional shared C ABI for Python/Rust consumers" OFF)
 option(NEWTON_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(NEWTON_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
@@ -83,6 +85,15 @@ function(newton_module name)
   endif()
 endfunction()
 
+# Header-only columnar views and Arrow C Data Interface adapter.
+add_library(newton_columnar INTERFACE)
+add_library(NewtonKernels::columnar ALIAS newton_columnar)
+set_target_properties(newton_columnar PROPERTIES EXPORT_NAME columnar)
+target_compile_features(newton_columnar INTERFACE cxx_std_20)
+target_include_directories(newton_columnar INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
 newton_module(core src/core/cpu_features.cpp)
 newton_module(memory src/memory/mapped_file.cpp)
 newton_module(simd src/simd/byte_scan.cpp)
@@ -97,6 +108,29 @@ target_link_libraries(newton_parsing PUBLIC newton_simd)
 find_package(Threads REQUIRED)
 target_link_libraries(newton_parallel PUBLIC Threads::Threads)
 
+# Optional in-process C ABI. This never affects default static-only builds.
+if(NEWTON_BUILD_C_API)
+  set_target_properties(newton_core newton_simd PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  add_library(newton_c SHARED src/c_api.cpp)
+  add_library(NewtonKernels::c ALIAS newton_c)
+  set_target_properties(newton_c PROPERTIES EXPORT_NAME c)
+  target_compile_features(newton_c PUBLIC cxx_std_20)
+  target_compile_definitions(newton_c PRIVATE NEWTON_C_API_BUILD=1)
+  target_include_directories(newton_c PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+  target_link_libraries(newton_c PRIVATE newton_simd)
+  install(TARGETS newton_c EXPORT NewtonKernelsTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  if(NEWTON_BUILD_TESTS)
+    add_executable(newton_c_api_tests tests/unit/test_c_api.cpp)
+    target_link_libraries(newton_c_api_tests PRIVATE newton_c)
+    add_test(NAME newton_c_api_tests COMMAND newton_c_api_tests)
+  endif()
+endif()
+
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS newton_core newton_memory newton_simd newton_parsing
   newton_index newton_analytics newton_graph newton_parallel
@@ -104,6 +138,7 @@ install(TARGETS newton_core newton_memory newton_simd newton_parsing
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS newton_columnar EXPORT NewtonKernelsTargets)
 install(EXPORT NewtonKernelsTargets
   NAMESPACE NewtonKernels::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NewtonKernels)
@@ -128,4 +163,7 @@ if(NEWTON_BUILD_EXAMPLES)
 endif()
 if(NEWTON_BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
+endif()
+if(NEWTON_BUILD_FUZZERS)
+  add_subdirectory(fuzz)
 endif()
