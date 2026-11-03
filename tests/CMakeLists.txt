@@ -28,3 +28,9 @@ add_executable(newton_columnar_tests unit/test_columnar.cpp)
 target_compile_features(newton_columnar_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_columnar_tests PRIVATE newton_analytics newton_parsing)
 add_test(NAME newton_columnar_tests COMMAND newton_columnar_tests)
+
+# The allocation override remains isolated to this test process.
+add_executable(newton_radix_heap_fault_tests unit/test_radix_heap_faults.cpp)
+target_compile_features(newton_radix_heap_fault_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_radix_heap_fault_tests PRIVATE newton_graph)
+add_test(NAME newton_radix_heap_fault_tests COMMAND newton_radix_heap_fault_tests)
