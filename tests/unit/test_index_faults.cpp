@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdlib>
+#include <cstdio>
 #include <iostream>
 #include <new>
 #include <stdexcept>
@@ -23,6 +24,8 @@ void* operator new(std::size_t size) {
         if (index == 0) {
             // Prevent recursive injected failures in exception machinery.
             failures_after.store(-1, std::memory_order_relaxed);
+            std::fprintf(stderr, "index_faults allocator throw offset 0 size=%zu\n", size);
+            std::fflush(stderr);
             throw std::bad_alloc();
         }
         failures_after.store(index - 1, std::memory_order_relaxed);
@@ -43,12 +46,16 @@ int main() {
         for (int fail_at = 0; fail_at < 200; ++fail_at) {
             newton::index::InvertedIndex idx;
             check(idx.add_document("old beta old") == 0, "Initial document ID");
+            std::fprintf(stderr, "index_faults injecting offset=%d\n", fail_at);
+            std::fflush(stderr);
             failures_after.store(fail_at, std::memory_order_relaxed);
             bool failed = false;
             std::uint32_t result = 0;
             try {
                 result = idx.add_document("alpha beta alpha gamma beta delta alpha");
             } catch (const std::bad_alloc&) {
+                std::fprintf(stderr, "index_faults caught bad_alloc offset=%d\n", fail_at);
+                std::fflush(stderr);
                 failed = true;
             }
             failures_after.store(-1, std::memory_order_relaxed);
