@@ -52,6 +52,10 @@ Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](
 
 The [proposed NewtonKernels v1 architecture and gate-driven implementation roadmap](docs/v1-architecture-roadmap.md) documents a **zero-central-runtime** direction: direct C++20 APIs, independent static modules, no mandatory context/JIT/daemon/autotuner, caller-owned buffers, optional AOT hardware dispatch, columnar batches and end-to-end benchmark requirements. **This is a design proposal, not an implemented or released feature.**
 
+## Independently researched Speed Demon techniques
+
+The [Speed Demon 2026 technique-transfer study](docs/speed-demon-techniques-transfer.md) surveys public implementation reports, failed optimizations, and generalizable algorithms. The first opt-in C++ primitives are **bounded-domain exact percentiles**, **caller-buffer dense count/sum**, and **allocation-free quoted-CSV record-boundary scanning**. These additions do not copy contestant code, create a central runtime or imply universal speedups. See the study for local winning **and losing** measurements and limitations.
+
 ## Benchmarks
 
 `cmake -S . -B build/release -DNEWTON_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release` builds opt-in microbenchmarks. Benchmark output is *not* comparable across hosts without identical datasets, toolchains, CPU governors and build flags. See the [measured strategy comparison](docs/performance-comparison.md) and [`docs/benchmarking.md`](docs/benchmarking.md).
