@@ -2,6 +2,9 @@
 #include <algorithm>
 #include <bit>
 #include <cstddef>
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+#include <cstdio>
+#endif
 #include <cstdint>
 #include <limits>
 #include <span>
@@ -120,21 +123,45 @@ public:
     void add_query(std::string_view query) {
         if (documents_ || finalized_) throw std::logic_error("Queries must be declared first");
         const auto checkpoint = raw_.size();
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+        std::fputs("TRACE add_query entered\n", stderr); std::fflush(stderr);
+#endif
         try {
             tokenize(query, [&](const std::string& token) {
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+                std::fputs("TRACE callback entry\n", stderr); std::fflush(stderr);
+#endif
                 if (lookup_.contains(token)) return;
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+                std::fputs("TRACE hash lookup complete\n", stderr); std::fflush(stderr);
+#endif
                 // First create the corresponding posting list, then publish its
                 // index. Neither a failed allocation nor a failed hash insertion
                 // may leave a map entry referring beyond raw_.
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+                std::fputs("TRACE before raw emplace\n", stderr); std::fflush(stderr);
+#endif
                 raw_.emplace_back();
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+                std::fputs("TRACE raw emplace done\n", stderr); std::fflush(stderr);
+#endif
                 try {
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+                    std::fputs("TRACE before lookup emplace\n", stderr); std::fflush(stderr);
+#endif
                     lookup_.emplace(token, raw_.size() - 1);
                 } catch (...) {
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+                    std::fputs("TRACE inner rollback\n", stderr); std::fflush(stderr);
+#endif
                     raw_.pop_back();
                     throw;
                 }
             });
         } catch (...) {
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+            std::fputs("TRACE outer rollback entered\n", stderr); std::fflush(stderr);
+#endif
             // Strong guarantee for the entire add_query() call. Erasing by
             // iterator and popping vectors do not allocate.
             for (auto it = lookup_.begin(); it != lookup_.end();) {
