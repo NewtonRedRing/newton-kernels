@@ -20,7 +20,13 @@ int main() {
         return 4;
     const std::array<std::uint64_t, 2> over{
         std::numeric_limits<std::uint64_t>::max(), 2};
-    if (newton_sum_gt_u64(over.data(), over.size(), 0, &count, &sum) != NEWTON_STATUS_OVERFLOW)
+    if (newton_sum_gt_u64(over.data(), over.size(), 0, &count, &sum) != NEWTON_STATUS_OVERFLOW ||
+        count != 3 || sum != 114)
         return 5;
+    std::uint64_t overlapping = 99;
+    if (newton_sum_gt_u64(vals.data(), vals.size(), 5,
+            &overlapping, &overlapping) != NEWTON_STATUS_INVALID_ARGUMENT ||
+        overlapping != 99)
+        return 6;
     std::cout << "C ABI smoke: PASS\n";
 }

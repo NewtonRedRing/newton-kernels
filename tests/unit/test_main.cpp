@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -155,6 +156,36 @@ void test_parallel() {
     throws([&] { executor.parallel_for(0, 10, 0, [](auto, auto) {}); }, "invalid grain");
     auto failed = executor.submit([]() -> void { throw std::runtime_error("intentional"); });
     throws([&] { failed.get(); }, "future exception");
+
+    // An executor worker waiting on its own queued tasks used to deadlock.
+    newton::parallel::Executor single_worker(1);
+    auto nested = single_worker.submit([&single_worker] {
+        std::size_t total = 0;
+        single_worker.parallel_for(0, 37, 4,
+            [&](std::size_t start, std::size_t finish) { total += finish - start; });
+        return total;
+    });
+    check(nested.wait_for(std::chrono::seconds(5)) == std::future_status::ready,
+          "reentrant parallel_for deadlocked on a single worker");
+    check(nested.get() == 37, "reentrant parallel_for incorrect result");
+
+    // A callback exception must not abandon other borrowed callbacks.
+    std::atomic<int> completed{0};
+    throws([&] {
+        single_worker.parallel_for(0, 10, 1, [&](std::size_t start, std::size_t) {
+            ++completed;
+            if (start == 4) throw std::runtime_error("expected callback failure");
+        });
+    }, "parallel_for failed to propagate callback exception");
+    check(completed == 10, "parallel_for returned before in-flight callbacks ended");
+
+    // Reject impossible work counts before submitting *any* borrowed tasks.
+    std::atomic<int> unexpectedly_run{0};
+    throws([&] {
+        single_worker.parallel_for(0, std::numeric_limits<std::size_t>::max(),
+            1, [&](std::size_t, std::size_t) { ++unexpectedly_run; });
+    }, "parallel_for should reject an unrepresentable futures allocation");
+    check(unexpectedly_run == 0, "parallel_for submitted work before failed reserve");
 }
 }
 int main() {

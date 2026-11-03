@@ -226,6 +226,23 @@ void postings_test() {
                   std::binary_search(ids.begin(), ids.end(), static_cast<std::uint32_t>(i)),
                   "Hybrid contains incorrect");
     }
+    // UINT32_MAX + 63 wrapped on 32-bit platforms, selecting an empty
+    // bitmap and writing beyond it. Sparse high IDs must stay segmented.
+    const std::array<std::uint32_t, 3> high_ids{
+        0, 0xffff0000u, std::numeric_limits<std::uint32_t>::max() - 1
+    };
+    const auto high = HybridPostings::from_sorted(
+        high_ids, std::numeric_limits<std::uint32_t>::max());
+    check(high.format() == HybridPostings::Format::Segmented16 &&
+          high.contains(high_ids[2]) &&
+          !high.contains(std::numeric_limits<std::uint32_t>::max()),
+          "Full uint32 universe must not overflow bitmap allocation");
+    const std::array<std::uint32_t, 2> dense_ids{1, 3};
+    const auto dense = HybridPostings::from_sorted(dense_ids, 64);
+    check(dense.format() == HybridPostings::Format::Bitmap &&
+          dense.contains(3) && !dense.contains(2),
+          "Bitmap crossover changed");
+
     std::vector<std::uint32_t> a{1,2,5,50,51,800,1000};
     std::vector<std::uint32_t> b{0,2,4,50,52,53,800,850,900,1000};
     std::array<std::uint32_t, 7> result{};

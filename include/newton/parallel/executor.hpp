@@ -39,12 +39,35 @@ public:
     void parallel_for(std::size_t begin, std::size_t end, std::size_t grain, F&& func) {
         if (grain == 0) throw std::invalid_argument("grain must be positive");
         if (end < begin) throw std::invalid_argument("invalid range");
+        // A task already running on this executor must not block waiting for
+        // work on the same pool (especially when it has a single worker).
+        if (running_on_ == this) {
+            for (std::size_t start = begin; start < end;) {
+                const auto finish = start + std::min(grain, end - start);
+                func(start, finish);
+                start = finish;
+            }
+            return;
+        }
         std::vector<std::future<void>> jobs;
-        for (std::size_t start = begin; start < end;) {
-            const auto count = std::min(grain, end - start);
-            const auto finish = start + count;
-            jobs.push_back(submit([&func, start, finish] { func(start, finish); }));
-            start = finish;
+        const auto length = end - begin;
+        // Reserve BEFORE enqueueing callbacks that borrow func. An allocation
+        // failure after enqueueing could otherwise leave dangling references.
+        jobs.reserve(length / grain + static_cast<std::size_t>(length % grain != 0));
+        try {
+            for (std::size_t start = begin; start < end;) {
+                const auto count = std::min(grain, end - start);
+                const auto finish = start + count;
+                jobs.push_back(submit([&func, start, finish] { func(start, finish); }));
+                start = finish;
+            }
+        } catch (...) {
+            const auto failure = std::current_exception();
+            // Draining submitted callbacks is mandatory before func dies.
+            for (auto& job : jobs) {
+                try { job.get(); } catch (...) {}
+            }
+            std::rethrow_exception(failure);
         }
         std::exception_ptr first;
         for (auto& job : jobs) {
@@ -53,6 +76,7 @@ public:
         if (first) std::rethrow_exception(first);
     }
 private:
+    static thread_local Executor* running_on_;
     void worker_loop();
     std::vector<std::thread> workers_;
     std::deque<std::function<void()>> queue_;

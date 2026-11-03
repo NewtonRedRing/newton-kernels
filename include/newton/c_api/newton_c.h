@@ -27,6 +27,8 @@ typedef enum newton_status {
 
 NEWTON_C_API int newton_count_byte(
     const uint8_t* data, size_t size, uint8_t needle, size_t* count);
+// count and sum must be distinct output objects. Neither is changed on
+// argument validation failure or accumulation overflow.
 NEWTON_C_API int newton_sum_gt_u64(
     const uint64_t* values, size_t size, uint64_t threshold,
     uint64_t* count, uint64_t* sum);
