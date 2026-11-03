@@ -1,3 +1,4 @@
+#define NEWTON_SELECTIVE_FAULT_TRACE 1
 #include <newton/index/hybrid_postings.hpp>
 #include <atomic>
 #include <cstddef>
