@@ -83,6 +83,39 @@ void csv_mask_test() {
     throws<std::invalid_argument>([] {
         (void)newton::parsing::csv_structure_mask64(nullptr, 1);
     });
+
+    // Quote parity must carry across consecutive 64-byte blocks, even when
+    // a doubled quote straddles the boundary. Check bit positions exactly.
+    std::mt19937 mask_rng{0x2cd0ffee};
+    constexpr char alphabet[] = {'a', '"', ',', '\n', '\r', '0', '\0'};
+    for (std::size_t length = 1; length <= 512; length += 7) {
+        std::string input(length, 'x');
+        for (auto& c : input) c = alphabet[mask_rng() % 7];
+        if (length > 65) {
+            input[63] = '"';
+            input[64] = '"';
+        }
+        bool carried = false;
+        for (std::size_t base = 0; base < input.size(); base += 64) {
+            const auto size = std::min<std::size_t>(64, input.size() - base);
+            std::uint64_t commas = 0, line_ends = 0;
+            bool oracle = carried;
+            for (std::size_t i = 0; i < size; ++i) {
+                const char c = input[base + i];
+                if (c == '"') oracle = !oracle;
+                else if (!oracle) {
+                    if (c == ',') commas |= std::uint64_t{1} << i;
+                    if (c == '\n' || c == '\r') line_ends |= std::uint64_t{1} << i;
+                }
+            }
+            const auto got = newton::parsing::csv_structure_mask64(
+                input.data() + base, size, carried);
+            check(got.commas == commas && got.line_ends == line_ends &&
+                  got.inside_quotes == oracle, "CSV mask cross-block parity mismatch");
+            carried = oracle;
+        }
+    }
+
 }
 void numbers_test() {
     using namespace newton::parsing;
