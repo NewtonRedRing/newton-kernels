@@ -2,9 +2,6 @@
 #include <algorithm>
 #include <bit>
 #include <cstddef>
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-#include <cstdio>
-#endif
 #include <cstdint>
 #include <limits>
 #include <span>
@@ -123,45 +120,21 @@ public:
     void add_query(std::string_view query) {
         if (documents_ || finalized_) throw std::logic_error("Queries must be declared first");
         const auto checkpoint = raw_.size();
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-        std::fputs("TRACE add_query entered\n", stderr); std::fflush(stderr);
-#endif
         try {
             tokenize(query, [&](const std::string& token) {
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-                std::fputs("TRACE callback entry\n", stderr); std::fflush(stderr);
-#endif
                 if (lookup_.contains(token)) return;
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-                std::fputs("TRACE hash lookup complete\n", stderr); std::fflush(stderr);
-#endif
                 // First create the corresponding posting list, then publish its
                 // index. Neither a failed allocation nor a failed hash insertion
                 // may leave a map entry referring beyond raw_.
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-                std::fputs("TRACE before raw emplace\n", stderr); std::fflush(stderr);
-#endif
                 raw_.emplace_back();
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-                std::fputs("TRACE raw emplace done\n", stderr); std::fflush(stderr);
-#endif
                 try {
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-                    std::fputs("TRACE before lookup emplace\n", stderr); std::fflush(stderr);
-#endif
                     lookup_.emplace(token, raw_.size() - 1);
                 } catch (...) {
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-                    std::fputs("TRACE inner rollback\n", stderr); std::fflush(stderr);
-#endif
                     raw_.pop_back();
                     throw;
                 }
             });
         } catch (...) {
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-            std::fputs("TRACE outer rollback entered\n", stderr); std::fflush(stderr);
-#endif
             // Strong guarantee for the entire add_query() call. Erasing by
             // iterator and popping vectors do not allocate.
             for (auto it = lookup_.begin(); it != lookup_.end();) {
@@ -235,17 +208,8 @@ public:
 private:
     template<class Visitor>
     static void tokenize(std::string_view text, Visitor&& visit) {
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-        std::fputs("TRACE tokenizer before string construction\n", stderr); std::fflush(stderr);
-#endif
         std::string token;
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-        std::fputs("TRACE tokenizer after string construction\n", stderr); std::fflush(stderr);
-#endif
         for (unsigned char c : text) {
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-            std::fputs("TRACE tokenizer before character\n", stderr); std::fflush(stderr);
-#endif
             const bool word = (c >= 'a' && c <= 'z') ||
                 (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
             if (word) token.push_back(static_cast<char>(
@@ -254,9 +218,6 @@ private:
                 visit(token);
                 token.clear();
             }
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-            std::fputs("TRACE tokenizer after character\n", stderr); std::fflush(stderr);
-#endif
         }
         if (!token.empty()) visit(token);
     }
