@@ -35,3 +35,5 @@ add_executable(newton_selective_fault_tests unit/test_selective_faults.cpp)
 target_compile_features(newton_selective_fault_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_selective_fault_tests PRIVATE newton_index)
 add_test(NAME newton_selective_fault_tests COMMAND newton_selective_fault_tests)
+# Fail a hung fault-injection run promptly; preserve all failure offsets.
+set_tests_properties(newton_selective_fault_tests PROPERTIES TIMEOUT 120)
