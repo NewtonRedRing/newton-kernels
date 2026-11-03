@@ -41,4 +41,6 @@ add_executable(newton_index_fault_tests unit/test_index_faults.cpp)
 target_compile_features(newton_index_fault_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_index_fault_tests PRIVATE newton_index)
 add_test(NAME newton_index_fault_tests COMMAND newton_index_fault_tests)
+# Fail fast on deadlock, without skipping any allocation-failure test cases.
+set_tests_properties(newton_index_fault_tests PROPERTIES TIMEOUT 120)
 
