@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdlib>
+#include <cstdio>
 #include <iostream>
 #include <new>
 #include <stdexcept>
@@ -35,19 +36,35 @@ void operator delete[](void* p, std::size_t) noexcept { ::operator delete(p); }
 
 int main() {
     try {
+        std::fputs("radix-fault direct allocator smoke begin\n", stderr);
+        std::fflush(stderr);
+        fail_after.store(0, std::memory_order_relaxed);
+        bool smoke_caught = false;
+        try { void* p = ::operator new(16); ::operator delete(p); }
+        catch (const std::bad_alloc&) { smoke_caught = true; }
+        fail_after.store(-1, std::memory_order_relaxed);
+        std::fprintf(stderr, "radix-fault direct allocator smoke caught=%d\n", int(smoke_caught));
+        std::fflush(stderr);
+        require(smoke_caught, "Direct global new injection did not throw");
         const std::array<std::uint64_t, 7> keys{200, 200, 201, 204, 205, 300, 302};
         int exceptions = 0;
         bool successful = false;
         for (int n = 0; n < 128; ++n) {
+            std::fprintf(stderr, "radix-fault iteration=%d begin\n", n);
+            std::fflush(stderr);
             newton::graph::RadixHeap heap;
             for (std::size_t i = 0; i < keys.size(); ++i)
                 heap.push(keys[i], static_cast<std::uint32_t>(i));
+            std::fprintf(stderr, "radix-fault iteration=%d seeded\n", n);
+            std::fflush(stderr);
             fail_after.store(n, std::memory_order_relaxed);
             bool failed = false;
             newton::graph::RadixHeap::Entry first{};
             try { first = heap.pop(); }
             catch (const std::bad_alloc&) { failed = true; }
             fail_after.store(-1, std::memory_order_relaxed);
+            std::fprintf(stderr, "radix-fault iteration=%d returned failed=%d\n", n, int(failed));
+            std::fflush(stderr);
             if (failed) {
                 ++exceptions;
                 require(heap.size() == keys.size(),
