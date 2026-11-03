@@ -35,6 +35,13 @@ inline CsvStructureMask csv_mask_scalar(
     return out;
 }
 #ifdef NEWTON_CSV_MASK_X86
+__attribute__((target("avx2,pclmul"))) inline std::uint64_t eq64_avx2(
+    __m256i first, __m256i second, char ch) noexcept {
+    const auto symbol = _mm256_set1_epi8(ch);
+    const auto lo = static_cast<std::uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(first, symbol)));
+    const auto hi = static_cast<std::uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(second, symbol)));
+    return std::uint64_t{lo} | (std::uint64_t{hi} << 32);
+}
 __attribute__((target("avx2,pclmul"))) inline CsvStructureMask csv_mask_accel(
     const char* input, std::size_t n, bool inside) noexcept {
     alignas(32) char tail[64]{};
@@ -44,13 +51,7 @@ __attribute__((target("avx2,pclmul"))) inline CsvStructureMask csv_mask_accel(
     }
     const auto first = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(input));
     const auto second = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(input + 32));
-    auto eq64 = [&](char ch) noexcept -> std::uint64_t {
-        const auto symbol = _mm256_set1_epi8(ch);
-        const auto lo = static_cast<std::uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(first, symbol)));
-        const auto hi = static_cast<std::uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(second, symbol)));
-        return std::uint64_t{lo} | (std::uint64_t{hi} << 32);
-    };
-    const std::uint64_t quote = eq64('"');
+    const std::uint64_t quote = eq64_avx2(first, second, '"');
     const auto bits = _mm_cvtsi64_si128(static_cast<long long>(quote));
     const auto ones = _mm_cvtsi64_si128(-1LL);
     const auto parity = _mm_clmulepi64_si128(bits, ones, 0x00);
@@ -59,8 +60,8 @@ __attribute__((target("avx2,pclmul"))) inline CsvStructureMask csv_mask_accel(
     const auto valid = n == 64 ? ~std::uint64_t{0} : (std::uint64_t{1} << n) - 1;
     CsvStructureMask out;
     const auto structural = (~inside_mask) & valid;
-    out.commas = eq64(',') & structural;
-    out.line_ends = (eq64('\n') | eq64('\r')) & structural;
+    out.commas = eq64_avx2(first, second, ',') & structural;
+    out.line_ends = (eq64_avx2(first, second, '\n') | eq64_avx2(first, second, '\r')) & structural;
     out.inside_quotes = inside != ((std::popcount(quote & valid) & 1) != 0);
     return out;
 }
