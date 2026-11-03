@@ -171,6 +171,42 @@ void flat_hash_test() {
             if (left[i] == right[j]) baseline.emplace_back(i, j);
     std::sort(got.begin(), got.end());
     check(count == baseline.size() && got == baseline, "Flat duplicate join mismatch");
+
+    // Full-multiset differential oracle for every caller bucket class:
+    // power-of-two, odd, prime, singleton, many collisions and empty data.
+    std::mt19937_64 join_rng{0x82f6b77d2026ULL};
+    for (const std::size_t capacity : {1u, 2u, 3u, 7u, 16u, 31u, 64u, 127u, 256u}) {
+        for (int trial = 0; trial < 96; ++trial) {
+            const std::size_t nleft = static_cast<std::size_t>(trial * 17 % 67);
+            const std::size_t nright = static_cast<std::size_t>(trial * 29 % 73);
+            const auto domain = static_cast<std::uint64_t>(1 + trial % 43);
+            std::vector<std::uint64_t> l(nleft), r(nright);
+            for (auto& v : l)
+                v = trial % 7 == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                   : join_rng() % domain;
+            for (auto& v : r)
+                v = trial % 7 == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                   : join_rng() % domain;
+            std::vector<std::size_t> bucket_heads(capacity), links(nright);
+            std::vector<std::pair<std::size_t, std::size_t>> actual, oracle;
+            const auto found = newton::analytics::flat_hash_join_into(
+                l, r, bucket_heads, links, [&](std::size_t i, std::size_t j) {
+                    actual.emplace_back(i, j);
+                });
+            for (std::size_t i = 0; i < l.size(); ++i)
+                for (std::size_t j = 0; j < r.size(); ++j)
+                    if (l[i] == r[j]) oracle.emplace_back(i, j);
+            std::sort(actual.begin(), actual.end());
+            check(found == oracle.size() && actual == oracle,
+                  "Optimized caller-owned hash join changed exact pairs");
+        }
+    }
+    throws<std::length_error>([&] {
+        std::array<std::size_t, 0> no_heads{};
+        (void)newton::analytics::flat_hash_join_into(left, right,
+            no_heads, next, [](std::size_t, std::size_t) {});
+    });
+
 }
 void string_counter_test() {
     newton::analytics::InlineKeyCounter first(200), second(200);
