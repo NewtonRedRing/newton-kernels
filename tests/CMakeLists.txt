@@ -39,7 +39,20 @@ add_test(NAME newton_audit_edge_tests COMMAND newton_audit_edge_tests)
 # leave partial positional postings in the in-memory index.
 add_executable(newton_index_fault_tests unit/test_index_faults.cpp)
 target_compile_features(newton_index_fault_tests PRIVATE cxx_std_20)
-target_link_libraries(newton_index_fault_tests PRIVATE newton_index)
+if(MSVC)
+  # Compile this index implementation alongside its injected-allocation test,
+  # keeping the STL iterator-debug ABI consistent. Other Windows Debug tests
+  # still compile and link the production newton_index library unchanged.
+  target_sources(newton_index_fault_tests PRIVATE
+    ${PROJECT_SOURCE_DIR}/src/index/inverted_index.cpp)
+  target_include_directories(newton_index_fault_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  # Debug iterator proxy allocation can throw from noexcept STL constructors
+  # before the index reaches an operation with a catchable allocation failure.
+  target_compile_definitions(newton_index_fault_tests PRIVATE
+    $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>)
+else()
+  target_link_libraries(newton_index_fault_tests PRIVATE newton_index)
+endif()
 add_test(NAME newton_index_fault_tests COMMAND newton_index_fault_tests)
 # Do not obscure an MSVC Debug hang behind the default 25-minute timeout.
 # The full allocation-failure sweep remains enabled.
