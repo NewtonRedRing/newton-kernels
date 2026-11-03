@@ -272,7 +272,8 @@ int main() {
     try {
         scan_test(); csv_mask_test(); numbers_test(); csv_decode_test();
         packing_test(); flat_hash_test(); string_counter_test(); fused_join_test(); postings_test(); graph_test();
-        newton::parallel::prefetch_read(nullptr);
+        const int prefetch_probe = 7;
+        newton::parallel::prefetch_read(&prefetch_probe);
         std::cout << "Native optimization portfolio differential tests: PASS\n";
     } catch (const std::exception& e) {
         std::cerr << "FAIL: " << e.what() << '\n';
