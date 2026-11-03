@@ -16,7 +16,7 @@ namespace newton::analytics {
 class FlatCountSum {
 public:
     struct Result { std::uint64_t count = 0, sum = 0; };
-    explicit FlatCountSum(std::size_t max_distinct) {
+    explicit FlatCountSum(std::size_t max_distinct) : max_distinct_(max_distinct) {
         if (max_distinct > (std::numeric_limits<std::size_t>::max() / 2) - 1)
             throw std::length_error("FlatCountSum capacity overflow");
         std::size_t slots = 2;
@@ -36,6 +36,8 @@ public:
         for (std::size_t tries = 0; tries < slots_.size(); ++tries) {
             auto& slot = slots_[pos];
             if (!slot.used) {
+                if (count_ >= max_distinct_)
+                    throw std::length_error("FlatCountSum distinct capacity exceeded");
                 slot = Slot{key, 1, value, true};
                 ++count_;
                 return;
@@ -82,6 +84,7 @@ private:
         bool used = false;
     };
     std::vector<Slot> slots_;
+    std::size_t max_distinct_ = 0;
     std::size_t count_ = 0;
 };
 
