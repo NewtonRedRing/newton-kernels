@@ -18,7 +18,11 @@ void require(bool ok, const char* message) {
 
 void* operator new(std::size_t n) {
     const auto count = fail_after.load(std::memory_order_relaxed);
-    if (count == 0) throw std::bad_alloc();
+    if (count == 0) {
+        // A fault is one-shot: MSVC exception construction may allocate.
+        fail_after.store(-1, std::memory_order_relaxed);
+        throw std::bad_alloc();
+    }
     if (count > 0) fail_after.store(count - 1, std::memory_order_relaxed);
     if (void* ptr = std::malloc(n ? n : 1)) return ptr;
     throw std::bad_alloc();
