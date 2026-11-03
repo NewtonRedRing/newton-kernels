@@ -22,6 +22,11 @@ jobs:
         run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
       - name: Install
         run: cmake --install build --config ${{ matrix.build_type }} --prefix stage
+      - name: Verify installed package in a separate consumer project
+        run: |
+          cmake -S tests/consumer -B consumer-build "-DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage" "-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}"
+          cmake --build consumer-build --config ${{ matrix.build_type }} --parallel 2
+          ctest --test-dir consumer-build -C ${{ matrix.build_type }} --output-on-failure
   sanitizers:
     runs-on: ubuntu-latest
     steps:
