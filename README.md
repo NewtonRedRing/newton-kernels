@@ -90,6 +90,17 @@ and CI workflow are configured for an external run and must pass before publishi
 
 The five-module competitors are independently authored standard-library references, not full competing high-level libraries. Peak RSS, CPU time, page faults and context switches are captured as **process-wide** diagnostics; cache-miss/IPC counters, energy, NUMA and allocation tracing have not been measured.
 
+
+## Performance regression protection
+
+Before adding new kernels, the [performance regression guard](docs/performance-regression-policy.md)
+builds each proposed revision together with the previous \`main\` and the original
+22-case published-evidence commit on the same runner. It checks all eight modules
+for exact output equality, measures interleaved performance, and blocks
+confirmed regressions while reporting smaller slowdowns. See the linked policy
+for the statistical limits and the **branch ruleset needed to make this check
+mandatory**.
+
 ## Limitations
 
 - `CsvParser` allocates owned `std::string` fields; for unquoted data, prefer the borrowed `for_each_delimited_record` API.
