@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <iostream>
 #include <new>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -13,6 +14,8 @@
 // This is deliberately NOT linked into the production library or other tests.
 namespace {
 std::atomic<int> failures_after{-1};
+// Prepare exception storage outside the injected allocation-failure window.
+std::exception_ptr prepared_bad_alloc;
 void check(bool yes, const char* why) {
     if (!yes) throw std::runtime_error(why);
 }
@@ -26,7 +29,7 @@ void* operator new(std::size_t size) {
             failures_after.store(-1, std::memory_order_relaxed);
             std::fprintf(stderr, "index_faults allocator throw offset 0 size=%zu\n", size);
             std::fflush(stderr);
-            throw std::bad_alloc();
+            std::rethrow_exception(prepared_bad_alloc);
         }
         failures_after.store(index - 1, std::memory_order_relaxed);
     }
@@ -41,6 +44,7 @@ void operator delete[](void* ptr, std::size_t) noexcept { ::operator delete(ptr)
 
 int main() {
     try {
+        prepared_bad_alloc = std::make_exception_ptr(std::bad_alloc{});
         int injected_failures = 0;
         bool observed_success = false;
         for (int fail_at = 0; fail_at < 200; ++fail_at) {
