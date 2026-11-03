@@ -75,10 +75,12 @@ std::vector<InvertedIndex::DocumentId> InvertedIndex::search_phrase(std::string_
     for (std::size_t i = 1; i < lists.size(); ++i)
         if (lists[i]->size() < lists[anchor]->size()) anchor = i;
     std::vector<DocumentId> matches;
+    // One pointer table per query, not one heap allocation per candidate
+    // document. Every slot is refreshed before it is read for a match.
+    std::vector<const Posting*> same_doc(words.size());
     for (const Posting& anchor_post : *lists[anchor]) {
         const DocumentId doc = anchor_post.id;
         // One binary search per term/doc, not per candidate position.
-        std::vector<const Posting*> same_doc(words.size());
         same_doc[anchor] = &anchor_post;
         bool possible = true;
         for (std::size_t i = 0; i < lists.size(); ++i) {
