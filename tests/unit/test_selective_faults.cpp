@@ -31,7 +31,12 @@ bool failure_at(int offset, F&& operation) {
 // Allocation failures are injected only in this separate test executable.
 void* operator new(std::size_t n) {
     const auto count = fail_after.load(std::memory_order_relaxed);
-    if (count == 0) throw std::bad_alloc();
+    if (count == 0) {
+        // Disarm before throwing: MSVC may allocate while materializing
+        // the exception. A persistent failure trigger can recurse forever.
+        fail_after.store(-1, std::memory_order_relaxed);
+        throw std::bad_alloc();
+    }
     if (count > 0) fail_after.store(count - 1, std::memory_order_relaxed);
     if (void* ptr = std::malloc(n ? n : 1)) return ptr;
     throw std::bad_alloc();
