@@ -11,3 +11,7 @@ option(NEWTON_EXTERNAL_BENCHMARKS "Build external library comparison benchmark (
 if(NEWTON_EXTERNAL_BENCHMARKS)
   add_subdirectory(competitors)
 endif()
+
+add_executable(newton_speed_demon_primitives_bench speed_demon_primitives_bench.cpp)
+target_compile_features(newton_speed_demon_primitives_bench PRIVATE cxx_std_20)
+target_link_libraries(newton_speed_demon_primitives_bench PRIVATE newton_analytics)
