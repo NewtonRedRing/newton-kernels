@@ -45,7 +45,8 @@ def invoke(binary: Path, implementation: str, fixture: Path) -> tuple[tuple, flo
 
 
 def verdict(deltas: list[float], threshold: float, min_slow_rounds: int) -> str:
-    if not deltas or any(not math.isfinite(x) for x in deltas):
+    if not deltas or any(type(x) not in (int, float) or
+                         not math.isfinite(x) for x in deltas):
         raise ValueError("Missing/invalid paired samples")
     if statistics.median(deltas) > threshold and \
             sum(x > 0 for x in deltas) >= min_slow_rounds:

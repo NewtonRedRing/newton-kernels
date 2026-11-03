@@ -1,5 +1,6 @@
 #include <newton/index/inverted_index.hpp>
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -103,10 +104,20 @@ std::vector<InvertedIndex::DocumentId> InvertedIndex::search_phrase(std::string_
     for (std::size_t i = 1; i < lists.size(); ++i)
         if (lists[i]->size() < lists[anchor]->size()) anchor = i;
     std::vector<DocumentId> matches;
+    // One pointer table per query, not one heap allocation per candidate
+    // document. Every slot is refreshed before it is read for a match.
+    // Common short phrases use stack scratch; longer phrases retain a single
+    // allocation per query rather than one per candidate document.
+    std::array<const Posting*, 8> small_doc{};
+    std::vector<const Posting*> large_doc;
+    const Posting** same_doc = small_doc.data();
+    if (words.size() > small_doc.size()) {
+        large_doc.resize(words.size());
+        same_doc = large_doc.data();
+    }
     for (const Posting& anchor_post : *lists[anchor]) {
         const DocumentId doc = anchor_post.id;
         // One binary search per term/doc, not per candidate position.
-        std::vector<const Posting*> same_doc(words.size());
         same_doc[anchor] = &anchor_post;
         bool possible = true;
         for (std::size_t i = 0; i < lists.size(); ++i) {
@@ -123,7 +134,7 @@ std::vector<InvertedIndex::DocumentId> InvertedIndex::search_phrase(std::string_
             const auto start = position - static_cast<std::uint32_t>(anchor);
             if (words.size() - 1 > std::numeric_limits<std::uint32_t>::max() - start) continue;
             bool matching = true;
-            for (std::size_t i = 0; i < same_doc.size(); ++i) {
+            for (std::size_t i = 0; i < lists.size(); ++i) {
                 if (i == anchor) continue;
                 if (!std::binary_search(same_doc[i]->positions.begin(), same_doc[i]->positions.end(),
                                         start + static_cast<std::uint32_t>(i))) { matching = false; break; }
