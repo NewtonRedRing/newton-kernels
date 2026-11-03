@@ -1,4 +1,7 @@
 #include <newton/analytics/flat_hash.hpp>
+#include <newton/analytics/fused_join.hpp>
+#include <newton/analytics/inline_key_counter.hpp>
+#include <newton/core/phase_trace.hpp>
 #include <newton/graph/bidirectional.hpp>
 #include <newton/graph/shortest_path.hpp>
 #include <newton/index/hybrid_postings.hpp>
@@ -169,6 +172,44 @@ void flat_hash_test() {
     std::sort(got.begin(), got.end());
     check(count == baseline.size() && got == baseline, "Flat duplicate join mismatch");
 }
+void string_counter_test() {
+    newton::analytics::InlineKeyCounter first(200), second(200);
+    const std::string long_key(48, 'x');
+    for (std::size_t i = 0; i < 100; ++i) {
+        first.add("alpha", 2);
+        first.add("beta", 4);
+        second.add("alpha", 3);
+        second.add(long_key, 5);
+    }
+    first.merge_from(second);
+    check(first.distinct() == 3, "Merged inline-key distinct count");
+    const auto a = first.find("alpha"), b = first.find("beta");
+    const auto c = first.find(long_key);
+    check(a.count == 200 && a.sum == 500 &&
+          b.count == 100 && b.sum == 400 &&
+          c.count == 100 && c.sum == 500, "Inline-key exact merge");
+    check(first.find("not-here").count == 0, "Unknown inline key");
+    first.clear();
+    check(first.distinct() == 0 && first.find("alpha").count == 0,
+          "Inline-key clear");
+}
+void fused_join_test() {
+    const std::array<std::uint64_t, 4> left{3,4,3,7};
+    const std::array<std::uint32_t, 4> groups{0,1,1,0};
+    const std::array<std::uint64_t, 4> values{10,20,30,40};
+    const std::array<std::uint64_t, 4> right{3,3,7,99};
+    std::array<std::size_t, 8> heads{};
+    std::array<std::size_t, 4> links{};
+    std::array<std::uint64_t, 2> counts{}, sums{};
+    const auto n = newton::analytics::fused_join_group_sum_into(
+        left, groups, values, right, heads, links, counts, sums);
+    check(n == 5 && counts[0] == 3 && counts[1] == 2 &&
+          sums[0] == 60 && sums[1] == 60, "Fused join grouped result");
+    newton::core::PhaseSample sample{"join"};
+    { newton::core::ScopedPhase timing(sample); }
+    check(sample.elapsed_ns < std::numeric_limits<std::uint64_t>::max(),
+          "Phase timing resource");
+}
 void postings_test() {
     using newton::index::HybridPostings;
     std::mt19937 rng(123);
@@ -230,7 +271,7 @@ void graph_test() {
 int main() {
     try {
         scan_test(); csv_mask_test(); numbers_test(); csv_decode_test();
-        packing_test(); flat_hash_test(); postings_test(); graph_test();
+        packing_test(); flat_hash_test(); string_counter_test(); fused_join_test(); postings_test(); graph_test();
         newton::parallel::prefetch_read(nullptr);
         std::cout << "Native optimization portfolio differential tests: PASS\n";
     } catch (const std::exception& e) {
