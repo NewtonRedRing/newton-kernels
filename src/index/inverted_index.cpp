@@ -18,6 +18,26 @@ std::vector<std::string> tokens(std::string_view s) {
     if (!token.empty()) out.push_back(std::move(token));
     return out;
 }
+// Keep the recovery-only hash-table walk out of the insertion hot path.
+// The helper performs no allocations and removes only this uncommitted ID.
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline, cold))
+#endif
+template<class Terms>
+void rollback_uncommitted_document(Terms& terms,
+                                   const std::vector<std::string>& words,
+                                   std::uint32_t id) {
+    for (const auto& word : words) {
+        const auto it = terms.find(word);
+        if (it == terms.end()) continue;
+        auto& postings = it->second;
+        if (!postings.empty() && postings.back().id == id)
+            postings.pop_back();
+        if (postings.empty()) terms.erase(it);
+    }
+}
 } // namespace
 InvertedIndex::DocumentId InvertedIndex::add_document(std::string_view text) {
     if (documents_ >= std::numeric_limits<DocumentId>::max()) throw std::length_error("Too many documents");
@@ -32,17 +52,7 @@ InvertedIndex::DocumentId InvertedIndex::add_document(std::string_view text) {
             postings.back().positions.push_back(i);
         }
     } catch (...) {
-        // Only the uncommitted document may occupy the final posting of a
-        // term. Revert all its positions/postings and erase new empty terms.
-        // The rollback uses existing strings and does not allocate.
-        for (const auto& word : words) {
-            const auto it = terms_.find(word);
-            if (it == terms_.end()) continue;
-            auto& postings = it->second;
-            if (!postings.empty() && postings.back().id == id)
-                postings.pop_back();
-            if (postings.empty()) terms_.erase(it);
-        }
+        rollback_uncommitted_document(terms_, words, id);
         throw;
     }
     // No document ID is consumed until the entire document is indexed.
