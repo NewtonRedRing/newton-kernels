@@ -212,6 +212,29 @@ void flat_hash_test() {
         e.second += value;
     }
     check(table.distinct() == expected.size(), "Flat table distinct keys");
+    // Hard capacity is distinct-key count, not the implementation's spare slots.
+    // Rejected inserts must leave existing aggregates intact, including the
+    // UINT64_MAX sentinel-like key and duplicate updates at full capacity.
+    newton::analytics::FlatCountSum limited(2);
+    limited.add(std::numeric_limits<std::uint64_t>::max(), 5);
+    limited.add(7, 11);
+    limited.add(std::numeric_limits<std::uint64_t>::max(), 2);
+    throws<std::length_error>([&] { limited.add(8, 3); });
+    check(limited.distinct() == 2 && !limited.find(8),
+          "Flat table accepted a third distinct key beyond requested capacity");
+    const auto max_key = limited.find(std::numeric_limits<std::uint64_t>::max());
+    check(max_key && max_key->count == 2 && max_key->sum == 7 &&
+          limited.find(7)->sum == 11,
+          "Capacity rejection corrupted existing entries");
+    limited.clear();
+    limited.add(8, 3);
+    check(limited.distinct() == 1 && limited.find(8)->sum == 3,
+          "Capacity was not restored after clear");
+    newton::analytics::FlatCountSum empty_capacity(0);
+    throws<std::length_error>([&] { empty_capacity.add(1, 1); });
+    check(empty_capacity.distinct() == 0 && !empty_capacity.find(1),
+          "Zero-capacity table accepted a new distinct key");
+
     for (const auto& [key, e] : expected) {
         const auto hit = table.find(key);
         check(hit && hit->count == e.first && hit->sum == e.second,
