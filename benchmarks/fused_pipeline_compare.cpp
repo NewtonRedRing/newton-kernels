@@ -1,4 +1,5 @@
 #include <newton/analytics/csv_fused.hpp>
+#include <newton/analytics/csv_numeric_fast.hpp>
 #include <newton/parsing/csv_parser.hpp>
 #include <newton/parsing/ascii_numeric.hpp>
 #include <newton/memory/mapped_file.hpp>
@@ -65,6 +66,14 @@ Aggregate run_fused(std::string_view data) {
     out.selected = result.selected;
     return out;
 }
+Aggregate run_fast(std::string_view data) {
+    Aggregate out;
+    const auto result = newton::analytics::parse_filter_group_cents_fast_into(
+        data, {.filter_greater_than = 500}, out.counts, out.sums);
+    out.records = result.records;
+    out.selected = result.selected;
+    return out;
+}
 Aggregate run_owned(std::string_view data) {
     Aggregate out;
     newton::parsing::CsvParser parser;
@@ -124,6 +133,7 @@ int main(int argc, char** argv) {
         }
         Aggregate result;
         if (mode == "fused") result = run_fused(data);
+        else if (mode == "fast") result = run_fast(data);
         else if (mode == "owned") result = run_owned(data);
         else throw std::invalid_argument("Unknown implementation");
         std::cout << "{\"checksum\":\"" << digest(result.counts, result.sums)

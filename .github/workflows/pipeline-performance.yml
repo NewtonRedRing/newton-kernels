@@ -5,6 +5,7 @@ on:
     paths:
       - "benchmarks/fused_pipeline_compare.cpp"
       - "include/newton/analytics/csv_fused.hpp"
+      - "include/newton/analytics/csv_numeric_fast.hpp"
       - "include/newton/columnar/**"
       - ".github/workflows/pipeline-performance.yml"
 permissions:
@@ -34,17 +35,29 @@ jobs:
               answers = [
                   json.loads(subprocess.check_output(
                       [binary, f"--impl={mode}", f"--input={shared}"], text=True))
-                  for mode in ("owned", "fused")
+                  for mode in ("owned", "fused", "fast")
               ]
-              assert answers[0] == answers[1], (name, answers)
+              assert answers[0] == answers[1] == answers[2], (name, answers)
               print("Exact output parity:", name, answers[0])
           PY
+      - name: Same-host ABBA trials — optimized single-pass 100k
+        run: |
+          python3 tools/benchmark_ab.py \
+            --before "./build/benchmarks/newton_pipeline_compare --impl=owned --input=evidence/input-100k.csv" \
+            --after "./build/benchmarks/newton_pipeline_compare --impl=fast --input=evidence/input-100k.csv" \
+            --cycles 12 --warmup 2 --output evidence/pipeline-fast-100k.json
       - name: Same-host ABBA trials — 100k rows
         run: |
           python3 tools/benchmark_ab.py \
             --before "./build/benchmarks/newton_pipeline_compare --impl=owned --input=evidence/input-100k.csv" \
             --after "./build/benchmarks/newton_pipeline_compare --impl=fused --input=evidence/input-100k.csv" \
             --cycles 12 --warmup 2 --output evidence/pipeline-100k.json
+      - name: Same-host ABBA trials — optimized single-pass 1M
+        run: |
+          python3 tools/benchmark_ab.py \
+            --before "./build/benchmarks/newton_pipeline_compare --impl=owned --input=evidence/input-1000k.csv" \
+            --after "./build/benchmarks/newton_pipeline_compare --impl=fast --input=evidence/input-1000k.csv" \
+            --cycles 12 --warmup 2 --output evidence/pipeline-fast-1000k.json
       - name: Same-host ABBA trials — 1M rows
         run: |
           python3 tools/benchmark_ab.py \

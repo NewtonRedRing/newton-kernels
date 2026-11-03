@@ -1,5 +1,6 @@
 #include <newton/analytics/columnar_kernels.hpp>
 #include <newton/analytics/csv_fused.hpp>
+#include <newton/analytics/csv_numeric_fast.hpp>
 #include <newton/columnar/arrow_c_data.hpp>
 #include <newton/columnar/views.hpp>
 #include <newton/columnar/simd_filter.hpp>
@@ -165,6 +166,13 @@ void test_csv_fused() {
     const auto result = newton::analytics::parse_filter_group_cents_into(
         sample, {.filter_greater_than = 4, .has_header = true},
         counts, sums, fields, scratch);
+    std::array<std::uint64_t, 3> fast_counts{}, fast_sums{};
+    const auto quick = newton::analytics::parse_filter_group_cents_fast_into(
+        sample, {.filter_greater_than = 4, .has_header = true},
+        fast_counts, fast_sums);
+    require(quick.records == result.records && quick.selected == result.selected &&
+            fast_counts == counts && fast_sums == sums,
+            "Fast single-pass numeric CSV sample differs from generic");
     require(result.records == 5 && result.selected == 3 &&
             counts[1] == 1 && counts[2] == 2 &&
             sums[1] == 250 && sums[2] == 300,
@@ -199,6 +207,13 @@ void test_csv_fused() {
         const auto observed = newton::analytics::parse_filter_group_cents_into(
             csv, {.filter_greater_than = 45}, actual_counts, actual_sums,
             fields, scratch);
+        std::array<std::uint64_t, 10> quick_counts{}, quick_sums{};
+        const auto quick_result = newton::analytics::parse_filter_group_cents_fast_into(
+            csv, {.filter_greater_than = 45}, quick_counts, quick_sums);
+        require(quick_result.records == observed.records &&
+                quick_result.selected == observed.selected &&
+                quick_counts == actual_counts && quick_sums == actual_sums,
+                "Fast and generic CSV pipeline differential mismatch");
         require(observed.records == static_cast<std::size_t>(n) &&
                 observed.selected == selected &&
                 actual_counts == want_counts && actual_sums == want_sums,
@@ -212,6 +227,15 @@ void test_csv_fused() {
         (void)newton::analytics::parse_filter_group_cents_into(
             "99,2,1.0\n", {}, counts, sums, fields, scratch);
     });
+    must_throw<std::invalid_argument>([&] {
+        (void)newton::analytics::parse_filter_group_cents_fast_into(
+            "99,2,1.0\n", {}, counts, sums);
+    });
+    must_throw<std::invalid_argument>([&] {
+        (void)newton::analytics::parse_filter_group_cents_fast_into(
+            "1,3,\"3.5\"oops\n", {}, counts, sums);
+    });
+
 }
 } // namespace
 
