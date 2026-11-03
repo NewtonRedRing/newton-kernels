@@ -56,6 +56,10 @@ The [proposed NewtonKernels v1 architecture and gate-driven implementation roadm
 
 The [optimization techniques and validation report](docs/optimization-techniques.md) documents general algorithms for parsing, indexing, aggregation, and graph processing, with tested improvements and limitations. All implementation source is independently authored; high-performance features remain opt-in, with no central runtime.
 
+## Native acceleration primitives (opt-in)
+
+In addition to the existing eight modules, independently authored headers provide AOT AVX2 multidelimiter scanning, PCLMUL quote masks, borrowed CSV decoding, checked numeric/timestamp parsers, packed exception records, exact open-addressed hash aggregation and joins, query-first hybrid posting lists, reusable bidirectional shortest paths, explicit OS memory/CPU affinity controls and caller-owned phase timing. These APIs use **no central runtime, background daemon, JIT, mandatory context or implicit threads**. Every feature is conditional on its documented input domain; new kernels have **not** been proven universally fastest. See the [native acceleration guide](docs/native-acceleration-guide.md) and [opt-in build and profiling guide](docs/build-and-profile.md).
+
 ## Benchmarks
 
 `cmake -S . -B build/release -DNEWTON_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release` builds opt-in microbenchmarks. Benchmark output is *not* comparable across hosts without identical datasets, toolchains, CPU governors and build flags. See the [measured strategy comparison](docs/performance-comparison.md) and [`docs/benchmarking.md`](docs/benchmarking.md).
