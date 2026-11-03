@@ -48,7 +48,7 @@ void* operator new(std::size_t n) {
     }
     if (count > 0) fail_after.store(count - 1, std::memory_order_relaxed);
     if (void* ptr = std::malloc(n ? n : 1)) return ptr;
-    std::rethrow_exception(prepared_bad_alloc);
+    throw std::bad_alloc();
 }
 void operator delete(void* ptr) noexcept { std::free(ptr); }
 void operator delete(void* ptr, std::size_t) noexcept { std::free(ptr); }
