@@ -299,6 +299,48 @@ void fused_join_test() {
         left, groups, values, right, heads, links, counts, sums);
     check(n == 5 && counts[0] == 3 && counts[1] == 2 &&
           sums[0] == 60 && sums[1] == 60, "Fused join grouped result");
+
+    // Bad caller-owned scratch must be rejected before modifying outputs.
+    std::array<std::uint64_t, 2> sentinel_count{17, 19}, sentinel_sum{23, 29};
+    std::array<std::size_t, 0> empty_heads{};
+    throws<std::length_error>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            left, groups, values, right, empty_heads, links,
+            sentinel_count, sentinel_sum);
+    });
+    check(sentinel_count == std::array<std::uint64_t, 2>{17, 19} &&
+          sentinel_sum == std::array<std::uint64_t, 2>{23, 29},
+          "Fused join preflight modified output on empty buckets");
+    std::array<std::size_t, 2> too_few_links{};
+    throws<std::length_error>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            left, groups, values, right, heads, too_few_links,
+            sentinel_count, sentinel_sum);
+    });
+    check(sentinel_count == std::array<std::uint64_t, 2>{17, 19} &&
+          sentinel_sum == std::array<std::uint64_t, 2>{23, 29},
+          "Fused join preflight modified output on short links");
+    const std::array<std::uint32_t, 4> invalid_group{0, 1, 2, 0};
+    throws<std::out_of_range>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            left, invalid_group, values, right, heads, links,
+            sentinel_count, sentinel_sum);
+    });
+    check(sentinel_count == std::array<std::uint64_t, 2>{17, 19} &&
+          sentinel_sum == std::array<std::uint64_t, 2>{23, 29},
+          "Invalid group modified output before validation");
+    const std::array<std::uint64_t, 2> high_values{
+        std::numeric_limits<std::uint64_t>::max(), 1};
+    const std::array<std::uint64_t, 2> duplicate_keys{7, 7};
+    const std::array<std::uint32_t, 2> zero_groups{0, 0};
+    const std::array<std::uint64_t, 2> right_match{7, 7};
+    std::array<std::size_t, 4> dup_heads{}, dup_links{};
+    throws<std::overflow_error>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            duplicate_keys, zero_groups, high_values, right_match,
+            dup_heads, dup_links, counts, sums);
+    });
+
     newton::core::PhaseSample sample{"join"};
     { newton::core::ScopedPhase timing(sample); }
     check(sample.elapsed_ns < std::numeric_limits<std::uint64_t>::max(),
