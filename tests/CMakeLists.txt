@@ -57,6 +57,3 @@ add_test(NAME newton_index_fault_tests COMMAND newton_index_fault_tests)
 # Do not obscure an MSVC Debug hang behind the default 25-minute timeout.
 # The full allocation-failure sweep remains enabled.
 set_tests_properties(newton_index_fault_tests PROPERTIES TIMEOUT 120)
-# Fail fast on deadlock, without skipping any allocation-failure test cases.
-set_tests_properties(newton_index_fault_tests PROPERTIES TIMEOUT 120)
-
