@@ -82,9 +82,15 @@ void test_simd() {
         }
     }
 
-    const auto features = newton::core::cpu_features();
+    const auto features = newton::core::cpu_features_cached();
+    const auto directly_detected = newton::core::cpu_features();
+    check(features.sse42 == directly_detected.sse42 &&
+          features.avx2 == directly_detected.avx2 &&
+          features.avx512f == directly_detected.avx512f &&
+          features.avx512bw == directly_detected.avx512bw,
+          "Cached CPU flags differ from default detection");
     for (int repeat = 0; repeat < 256; ++repeat) {
-        const auto next = newton::core::cpu_features();
+        const auto next = newton::core::cpu_features_cached();
         check(features.sse42 == next.sse42 && features.avx2 == next.avx2 &&
               features.avx512f == next.avx512f &&
               features.avx512bw == next.avx512bw,
