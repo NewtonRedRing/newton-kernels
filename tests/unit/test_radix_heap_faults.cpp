@@ -7,11 +7,14 @@
 #include <cstdio>
 #include <iostream>
 #include <new>
+#include <exception>
 #include <stdexcept>
 #include <vector>
 
 namespace {
 std::atomic<int> fail_after{-1};
+// Prepare the injected exception before entering the allocator override.
+std::exception_ptr prepared_bad_alloc;
 void require(bool ok, const char* message) {
     if (!ok) throw std::runtime_error(message);
 }
@@ -22,7 +25,7 @@ void* operator new(std::size_t n) {
     if (count == 0) {
         // A fault is one-shot: MSVC exception construction may allocate.
         fail_after.store(-1, std::memory_order_relaxed);
-        throw std::bad_alloc();
+        std::rethrow_exception(prepared_bad_alloc);
     }
     if (count > 0) fail_after.store(count - 1, std::memory_order_relaxed);
     if (void* ptr = std::malloc(n ? n : 1)) return ptr;
@@ -36,6 +39,7 @@ void operator delete[](void* p, std::size_t) noexcept { ::operator delete(p); }
 
 int main() {
     try {
+        prepared_bad_alloc = std::make_exception_ptr(std::bad_alloc{});
         std::fputs("radix-fault direct allocator smoke begin\n", stderr);
         std::fflush(stderr);
         fail_after.store(0, std::memory_order_relaxed);
