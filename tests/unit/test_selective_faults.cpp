@@ -23,6 +23,8 @@ bool failure_at(int offset, F&& operation) {
     try {
         operation();
     } catch (const std::bad_alloc&) {
+        std::fprintf(stderr, "fault-test caught bad_alloc offset=%d\\n", offset);
+        std::fflush(stderr);
         failed = true;
     }
     fail_after.store(-1, std::memory_order_relaxed);
@@ -34,9 +36,10 @@ bool failure_at(int offset, F&& operation) {
 void* operator new(std::size_t n) {
     const auto count = fail_after.load(std::memory_order_relaxed);
     if (count == 0) {
-        // Disarm before throwing: MSVC may allocate while materializing
-        // the exception. A persistent failure trigger can recurse forever.
+        // Disarm before throwing so exception construction cannot recursively fail.
         fail_after.store(-1, std::memory_order_relaxed);
+        std::fprintf(stderr, "fault-test operator new: injected failure size=%zu\\n", n);
+        std::fflush(stderr);
         throw std::bad_alloc();
     }
     if (count > 0) fail_after.store(count - 1, std::memory_order_relaxed);
