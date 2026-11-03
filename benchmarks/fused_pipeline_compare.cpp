@@ -1,11 +1,15 @@
 #include <newton/analytics/csv_fused.hpp>
 #include <newton/parsing/csv_parser.hpp>
 #include <newton/parsing/ascii_numeric.hpp>
+#include <newton/memory/mapped_file.hpp>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <optional>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -90,14 +94,34 @@ int main(int argc, char** argv) {
     try {
         std::size_t rows = 100000;
         std::string mode = "fused";
+        std::string input_path, fixture_path;
         for (int i = 1; i < argc; ++i) {
             const std::string_view arg(argv[i]);
             if (arg.starts_with("--rows=")) rows = std::stoull(std::string(arg.substr(7)));
             else if (arg.starts_with("--impl=")) mode = arg.substr(7);
+            else if (arg.starts_with("--input=")) input_path = arg.substr(8);
+            else if (arg.starts_with("--save-fixture=")) fixture_path = arg.substr(15);
             else throw std::invalid_argument("Unknown option");
         }
         if (rows > 3000000) throw std::invalid_argument("Limit fixture to 3M rows");
-        const auto data = input_data(rows);
+        if (!fixture_path.empty()) {
+            const auto fixture = input_data(rows);
+            std::ofstream output(fixture_path, std::ios::binary);
+            if (!output) throw std::runtime_error("Cannot open fixture file");
+            output.write(fixture.data(), static_cast<std::streamsize>(fixture.size()));
+            if (!output) throw std::runtime_error("Failed to write complete fixture file");
+            return 0;
+        }
+        std::optional<newton::memory::MappedFile> mapping;
+        std::string generated;
+        std::string_view data;
+        if (!input_path.empty()) {
+            mapping.emplace(std::filesystem::path(input_path));
+            data = mapping->text();
+        } else {
+            generated = input_data(rows);
+            data = generated;
+        }
         Aggregate result;
         if (mode == "fused") result = run_fused(data);
         else if (mode == "owned") result = run_owned(data);
