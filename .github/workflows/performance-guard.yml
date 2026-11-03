@@ -1,0 +1,107 @@
+name: Performance regression guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-guard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression_guard:
+    name: regression-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      ANCHOR_SHA: a3ccc65021181561aec1c8fe284bdeb7c8e1234c
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          ref: ${{ env.CANDIDATE_SHA }}
+          persist-credentials: false
+      - name: Check out merge base
+        uses: actions/checkout@v4
+        with:
+          path: base
+          ref: ${{ env.BASE_SHA }}
+          persist-credentials: false
+      - name: Check out published 22-case evidence revision
+        uses: actions/checkout@v4
+        with:
+          path: anchor
+          ref: ${{ env.ANCHOR_SHA }}
+          persist-credentials: false
+      - name: Verify benchmark guard policy tests
+        run: python3 -m unittest discover -s candidate/tests -p 'test_performance_guard.py' -v
+      - name: Verify CSV pipeline regression policy tests
+        run: python3 -m unittest discover -s candidate/tests -p 'test_pipeline_regression_guard.py' -v
+      - name: Compile all three revisions with identical flags and toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          for revision in candidate base anchor; do
+            cmake -S "$revision" -B "build-$revision" -DCMAKE_BUILD_TYPE=Release \
+              -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+              -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
+              -DNEWTON_COMP_BENCH_WITH_BOOST=OFF -DNEWTON_COMP_BENCH_WITH_VINCE=OFF
+            if [[ "$revision" == "anchor" ]]; then
+              cmake --build "build-$revision" \
+                --target newton_compare newton_compare_extended --parallel 2
+            else
+              cmake --build "build-$revision" \
+                --target newton_compare newton_compare_extended newton_pipeline_compare --parallel 2
+            fi
+          done
+      - name: Detect identical protected source code versus main
+        shell: bash
+        run: |
+          set -euo pipefail
+          if diff -q \
+              <(git -C candidate ls-tree -r HEAD -- CMakeLists.txt CMakePresets.json cmake src include benchmarks) \
+              <(git -C base ls-tree -r HEAD -- CMakeLists.txt CMakePresets.json cmake src include benchmarks) >/dev/null; then
+            echo "PROTECTED_CODE_IDENTICAL=1" >> "$GITHUB_ENV"
+          else
+            echo "PROTECTED_CODE_IDENTICAL=0" >> "$GITHUB_ENV"
+          fi
+      - name: Check every established benchmark against previous and published revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 candidate/tools/performance_guard.py \
+            --candidate-classic build-candidate/benchmarks/competitors/newton_compare \
+            --candidate-extended build-candidate/benchmarks/competitors/newton_compare_extended \
+            --base-classic build-base/benchmarks/competitors/newton_compare \
+            --base-extended build-base/benchmarks/competitors/newton_compare_extended \
+            --anchor-classic build-anchor/benchmarks/competitors/newton_compare \
+            --anchor-extended build-anchor/benchmarks/competitors/newton_compare_extended \
+            --candidate-sha "$CANDIDATE_SHA" --base-sha "$BASE_SHA" \
+            --out performance-evidence --protected-code-identical "$PROTECTED_CODE_IDENTICAL" \
+            --rounds 5 --repetitions 11 \
+            --max-regression-pct 3.0 --min-slow-rounds 4
+      - name: Guard existing owned, fused and fast CSV pipeline cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 candidate/tools/pipeline_regression_guard.py \
+            --candidate build-candidate/benchmarks/newton_pipeline_compare \
+            --base build-base/benchmarks/newton_pipeline_compare \
+            --out performance-evidence \
+            --protected-code-identical "$PROTECTED_CODE_IDENTICAL" \
+            --rounds 7 --max-regression-pct 3 --min-slow-rounds 5
+      - name: Upload unfiltered samples and regression decisions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-guard-${{ github.run_id }}-${{ github.run_attempt }}
+          path: performance-evidence/
+          if-no-files-found: warn
