@@ -1,6 +1,7 @@
 #include <newton/index/hybrid_postings.hpp>
 #include <atomic>
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
@@ -54,6 +55,7 @@ int main() {
         int query_failures = 0, document_failures = 0, finalize_failures = 0;
         bool query_success = false, document_success = false, finalize_success = false;
         for (int n = 0; n < 160; ++n) {
+            std::fprintf(stderr, "selective_faults query offset %d\n", n);
             SelectiveTermIndex idx;
             std::fprintf(stderr, "fault-test phase=query offset=%d\\n", n);
             std::fflush(stderr);
