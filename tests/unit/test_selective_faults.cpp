@@ -1,10 +1,7 @@
-#define NEWTON_SELECTIVE_FAULT_TRACE 1
 #include <newton/index/hybrid_postings.hpp>
 #include <atomic>
 #include <cstddef>
-#include <cstdio>
 #include <cstdlib>
-#include <cstdio>
 #include <iostream>
 #include <new>
 #include <exception>
@@ -28,8 +25,6 @@ bool failure_at(int offset, F&& operation) {
     try {
         operation();
     } catch (const std::bad_alloc&) {
-        std::fprintf(stderr, "fault-test caught bad_alloc offset=%d\\n", offset);
-        std::fflush(stderr);
         failed = true;
     }
     fail_after.store(-1, std::memory_order_relaxed);
@@ -43,8 +38,6 @@ void* operator new(std::size_t n) {
     if (count == 0) {
         // Disarm before throwing so exception construction cannot recursively fail.
         fail_after.store(-1, std::memory_order_relaxed);
-        std::fprintf(stderr, "fault-test operator new: injected failure size=%zu\\n", n);
-        std::fflush(stderr);
         std::rethrow_exception(prepared_bad_alloc);
     }
     if (count > 0) fail_after.store(count - 1, std::memory_order_relaxed);
@@ -63,32 +56,19 @@ int main() {
         prepared_bad_alloc = std::make_exception_ptr(std::bad_alloc{});
         // Distinguish an MSVC exception/allocator interception hang from an
         // index rollback bug before entering the full failure-point sweep.
-        std::fputs("fault-test allocator smoke begin\n", stderr);
-        std::fflush(stderr);
         const bool smoke_failed = failure_at(0, [] {
             void* memory = ::operator new(16);
             ::operator delete(memory);
         });
-        std::fprintf(stderr, "fault-test allocator smoke returned=%d\n", int(smoke_failed));
-        std::fflush(stderr);
         require(smoke_failed, "Injected global operator new did not fail");
         int query_failures = 0, document_failures = 0, finalize_failures = 0;
         bool query_success = false, document_success = false, finalize_success = false;
         for (int n = 0; n < 160; ++n) {
-            std::fprintf(stderr, "selective_faults query offset %d\n", n);
             SelectiveTermIndex idx;
-            std::fprintf(stderr, "fault-test query constructed offset=%d\n", n);
-            std::fflush(stderr);
             idx.add_query("alpha");
-            std::fprintf(stderr, "fault-test query seeded offset=%d\n", n);
-            std::fflush(stderr);
             const bool failed = failure_at(n, [&] {
-                std::fprintf(stderr, "fault-test query injecting offset=%d\n", n);
-                std::fflush(stderr);
                 idx.add_query("beta gamma delta epsilon");
             });
-            std::fprintf(stderr, "fault-test query returned offset=%d failed=%d\n", n, int(failed));
-            std::fflush(stderr);
             if (failed) {
                 ++query_failures;
                 require(idx.indexed_term_count() == 1,
@@ -105,10 +85,7 @@ int main() {
             if (!failed) break;
         }
         for (int n = 0; n < 160; ++n) {
-            std::fprintf(stderr, "selective_faults document offset %d\n", n);
             SelectiveTermIndex idx;
-            std::fprintf(stderr, "fault-test phase=document offset=%d\\n", n);
-            std::fflush(stderr);
             idx.add_query("alpha beta gamma delta epsilon");
             require(idx.add_document("alpha beta") == 0, "Baseline document ID");
             const bool failed = failure_at(n, [&] {
@@ -139,10 +116,7 @@ int main() {
             if (!failed) break;
         }
         for (int n = 0; n < 160; ++n) {
-            std::fprintf(stderr, "selective_faults finalize offset %d\n", n);
             SelectiveTermIndex idx;
-            std::fprintf(stderr, "fault-test phase=finalize offset=%d\\n", n);
-            std::fflush(stderr);
             idx.add_query("alpha beta gamma delta");
             idx.add_document("alpha beta gamma");
             idx.add_document("beta gamma delta");
