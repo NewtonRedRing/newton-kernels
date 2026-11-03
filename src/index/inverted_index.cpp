@@ -20,12 +20,12 @@ std::vector<std::string> tokens(std::string_view s) {
 }
 // Keep the recovery-only hash-table walk out of the insertion hot path.
 // The helper performs no allocations and removes only this uncommitted ID.
+template<class Terms>
 #if defined(_MSC_VER)
 __declspec(noinline)
 #elif defined(__GNUC__) || defined(__clang__)
 __attribute__((noinline, cold))
 #endif
-template<class Terms>
 void rollback_uncommitted_document(Terms& terms,
                                    const std::vector<std::string>& words,
                                    std::uint32_t id) {
