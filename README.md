@@ -52,9 +52,13 @@ Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](
 
 The [proposed NewtonKernels v1 architecture and gate-driven implementation roadmap](docs/v1-architecture-roadmap.md) documents a **zero-central-runtime** direction: direct C++20 APIs, independent static modules, no mandatory context/JIT/daemon/autotuner, caller-owned buffers, optional AOT hardware dispatch, columnar batches and end-to-end benchmark requirements. **This is a design proposal, not an implemented or released feature.**
 
-## Independently researched Speed Demon techniques
+## Independent performance research
 
-The [Speed Demon 2026 technique-transfer study](docs/speed-demon-techniques-transfer.md) surveys public implementation reports, failed optimizations, and generalizable algorithms. The first opt-in C++ primitives are **bounded-domain exact percentiles**, **caller-buffer dense count/sum**, and **allocation-free quoted-CSV record-boundary scanning**. These additions do not copy contestant code, create a central runtime or imply universal speedups. See the study for local winning **and losing** measurements and limitations.
+The [optimization techniques and validation report](docs/optimization-techniques.md) documents general algorithms for parsing, indexing, aggregation, and graph processing, with tested improvements and limitations. All implementation source is independently authored; high-performance features remain opt-in, with no central runtime.
+
+## Native acceleration primitives (opt-in)
+
+In addition to the existing eight modules, independently authored headers provide AOT AVX2 multidelimiter scanning, PCLMUL quote masks, borrowed CSV decoding, checked numeric/timestamp parsers, packed exception records, exact open-addressed hash aggregation and joins, query-first hybrid posting lists, reusable bidirectional shortest paths, explicit OS memory/CPU affinity controls and caller-owned phase timing. These APIs use **no central runtime, background daemon, JIT, mandatory context or implicit threads**. Every feature is conditional on its documented input domain; new kernels have **not** been proven universally fastest. See the [native acceleration guide](docs/native-acceleration-guide.md) and [opt-in build and profiling guide](docs/build-and-profile.md).
 
 ## Benchmarks
 

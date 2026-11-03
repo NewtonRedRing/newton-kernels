@@ -14,7 +14,12 @@ target_link_libraries(newton_algorithm_tests PRIVATE newton_graph newton_index)
 add_test(NAME newton_algorithm_tests COMMAND newton_algorithm_tests)
 
 # Independently implemented, allocator-free primitive correctness and differential tests.
-add_executable(newton_primitive_tests unit/test_speed_demon_primitives.cpp)
+add_executable(newton_primitive_tests unit/test_native_primitives.cpp)
 target_compile_features(newton_primitive_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_primitive_tests PRIVATE newton_analytics newton_parsing)
 add_test(NAME newton_primitive_tests COMMAND newton_primitive_tests)
+
+add_executable(newton_portfolio_tests unit/test_native_portfolio.cpp)
+target_compile_features(newton_portfolio_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_portfolio_tests PRIVATE newton_graph newton_analytics newton_index newton_parsing newton_simd newton_parallel)
+add_test(NAME newton_portfolio_tests COMMAND newton_portfolio_tests)
