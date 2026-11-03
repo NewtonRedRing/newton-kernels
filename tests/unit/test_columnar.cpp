@@ -2,6 +2,7 @@
 #include <newton/analytics/csv_fused.hpp>
 #include <newton/columnar/arrow_c_data.hpp>
 #include <newton/columnar/views.hpp>
+#include <newton/columnar/simd_filter.hpp>
 #include <newton/parsing/csv_parser.hpp>
 #include <newton/parsing/ascii_numeric.hpp>
 #include <algorithm>
@@ -101,6 +102,25 @@ void test_arrow() {
     });
 }
 
+void test_simd_filter() {
+    std::mt19937_64 random(0x91bec1ULL);
+    for (std::size_t n = 0; n < 513; ++n) {
+        std::vector<std::uint64_t> values(n);
+        std::vector<std::uint32_t> output(n), expected;
+        const auto threshold = random();
+        for (auto& value : values) value = random();
+        if (n > 0) values[0] = std::numeric_limits<std::uint64_t>::max();
+        if (n > 1) values[1] = 0;
+        if (n > 2) values[2] = threshold;
+        for (std::size_t i = 0; i < n; ++i)
+            if (values[i] > threshold)
+                expected.push_back(static_cast<std::uint32_t>(i));
+        const auto size = newton::columnar::select_gt_u64_into(values, threshold, output);
+        require(size == expected.size() &&
+            std::equal(expected.begin(), expected.end(), output.begin()),
+            "AOT SIMD/NEON filter differs from independent scalar");
+    }
+}
 void test_random_columnar() {
     std::mt19937_64 random(0x4526bacfedULL);
     for (int run = 0; run < 120; ++run) {
@@ -198,6 +218,7 @@ void test_csv_fused() {
 int main() {
     try {
         test_column_views();
+        test_simd_filter();
         test_arrow();
         test_random_columnar();
         test_csv_fused();
