@@ -15,6 +15,20 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Full source tests and separate installed-package consumer
+        run: |
+          cmake -S . -B check-build -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=ON -DNEWTON_WARNINGS_AS_ERRORS=ON
+          cmake --build check-build --parallel 2
+          ctest --test-dir check-build --output-on-failure
+          cmake --install check-build --prefix "${{ github.workspace }}/stage"
+          cmake -S tests/consumer -B consumer-build "-DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage" -DCMAKE_BUILD_TYPE=Release
+          cmake --build consumer-build --parallel 2
+          ctest --test-dir consumer-build --output-on-failure
+      - name: Clang libFuzzer smoke under ASan and UBSan
+        run: |
+          cmake -S . -B fuzz-build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNEWTON_BUILD_FUZZERS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
+          cmake --build fuzz-build --target newton_csv_fuzzer --parallel 2
+          ./fuzz-build/fuzz/newton_csv_fuzzer -runs=5000 -max_len=512 -timeout=5
       - name: Configure benchmark
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
       - name: Build benchmark
