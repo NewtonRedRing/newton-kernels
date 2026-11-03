@@ -111,6 +111,43 @@ void index_property() {
         require(index.search_all(query, IntersectionStrategy::InputOrder) == all, "input-order AND mismatch");
         require(index.search_phrase(query) == phrase, "anchored phrase mismatch");
     }
+    // High-frequency term candidates used to allocate a fresh pointer vector
+    // for every document; the query-level scratch must retain exact matches.
+    require(index.search_phrase("").empty(), "empty phrase should match no docs");
+    require(index.search_phrase("unknown").empty(), "absent phrase should match no docs");
+    for (int trial = 0; trial < 160; ++trial) {
+        const auto id = random32() % 12;
+        const std::string word = "w" + std::to_string(id);
+        for (const auto& query : {word, word + " " + word, word + " " + word + " " + word}) {
+            std::vector<std::uint32_t> oracle;
+            const std::size_t terms = std::count(query.begin(), query.end(), ' ') + 1;
+            for (std::uint32_t d = 0; d < source.size(); ++d) {
+                const auto& tokens = source[d];
+                bool match = false;
+                for (std::size_t k = 0; k + terms <= tokens.size(); ++k) {
+                    bool equal = true;
+                    for (std::size_t j = 0; j < terms; ++j)
+                        if (tokens[k + j] != word) { equal = false; break; }
+                    if (equal) { match = true; break; }
+                }
+                if (match) oracle.push_back(d);
+            }
+            require(index.search_phrase(query) == oracle,
+                    "single/repeated token phrase mismatch");
+        }
+    }
+
+    // Verify both sides of the stack-scratch / dynamic-scratch boundary.
+    newton::index::InvertedIndex long_phrases;
+    const std::string ten_terms = "one two three four five six seven eight nine ten";
+    require(long_phrases.add_document(ten_terms) == 0, "long phrase document ID");
+    require(long_phrases.search_phrase("one two three four five six seven eight") ==
+                std::vector<std::uint32_t>{0}, "eight-term stack phrase mismatch");
+    require(long_phrases.search_phrase(ten_terms) ==
+                std::vector<std::uint32_t>{0}, "ten-term dynamic phrase mismatch");
+    require(long_phrases.search_phrase("one two three four five six seven eight nine absent").empty(),
+            "long phrase must not report a missing term");
+
 }
 } // namespace
 int main() {
