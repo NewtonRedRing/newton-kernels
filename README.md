@@ -116,7 +116,9 @@ The [performance regression guard](docs/performance-regression-policy.md) checks
 rebuilds the candidate, current main and the pinned published baseline on the
 same runner, reports slowdowns and fails on confirmed regressions. All smaller
 regressions remain review-required warnings. The GitHub `main` ruleset must
-require its `compare` check before merging new kernels.
+require its unique `regression-guard` check before merging new kernels.
+It also protects the six established CSV pipeline cases (owned, fused and fast
+at 100K and 1M rows) against the immediately preceding `main` revision.
 
 ## Limitations
 
