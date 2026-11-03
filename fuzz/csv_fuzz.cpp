@@ -1,4 +1,5 @@
 #include <newton/analytics/csv_fused.hpp>
+#include <newton/analytics/csv_numeric_fast.hpp>
 #include <newton/parsing/csv_parser.hpp>
 #include <newton/parsing/csv_records.hpp>
 #include <newton/parsing/csv_fields.hpp>
@@ -31,6 +32,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         std::uint64_t counts[16]{}, sums[16]{};
         (void)newton::analytics::parse_filter_group_cents_into(
             input, {}, counts, sums, fields, scratch);
+    } catch (const std::exception&) {}
+    try {
+        std::uint64_t counts[16]{}, sums[16]{};
+        (void)newton::analytics::parse_filter_group_cents_fast_into(
+            input, {}, counts, sums);
     } catch (const std::exception&) {}
     return 0;
 }
