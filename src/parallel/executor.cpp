@@ -1,5 +1,7 @@
 #include <newton/parallel/executor.hpp>
 namespace newton::parallel {
+thread_local Executor* Executor::running_on_ = nullptr;
+
 Executor::Executor(std::size_t threads) {
     if (!threads) threads = 1;
     try {
@@ -17,6 +19,15 @@ Executor::~Executor() {
     for (auto& thread : workers_) if (thread.joinable()) thread.join();
 }
 void Executor::worker_loop() {
+    // Restored even if a worker exits; this is per-thread bookkeeping, not
+    // a global scheduler or an implicit application runtime.
+    struct Restore {
+        Executor*& slot;
+        Executor* previous;
+        ~Restore() noexcept { slot = previous; }
+    };
+    Restore restore{running_on_, running_on_};
+    running_on_ = this;
     for (;;) {
         std::function<void()> task;
         {

@@ -27,8 +27,12 @@ public:
         for (std::size_t i = 0; i < docs.size(); ++i)
             if (docs[i] >= universe || (i && docs[i] <= docs[i - 1]))
                 throw std::invalid_argument("Posting IDs must be sorted, unique and within domain");
-        const auto words = (static_cast<std::size_t>(universe) + 63) / 64;
-        if (!docs.empty() && docs.size() * 4 >= words * 8) {
+        // Avoid wrapping universe+63 on 32-bit platforms. The density
+        // crossover is equivalent to docs.size()*4 >= words*8, without
+        // overflowing either multiplicand.
+        const auto words = static_cast<std::size_t>(universe / 64) +
+                           static_cast<std::size_t>(universe % 64 != 0);
+        if (!docs.empty() && docs.size() >= words * 2) {
             result.format_ = Format::Bitmap;
             result.bits_.assign(words, 0);
             for (const auto id : docs) result.bits_[id / 64] |= std::uint64_t{1} << (id % 64);

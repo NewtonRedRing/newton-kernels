@@ -18,7 +18,8 @@ extern "C" int newton_count_byte(
 extern "C" int newton_sum_gt_u64(
     const std::uint64_t* values, std::size_t size, std::uint64_t threshold,
     std::uint64_t* count, std::uint64_t* sum) {
-    if (count == nullptr || sum == nullptr || (size != 0 && values == nullptr))
+    if (count == nullptr || sum == nullptr || count == sum ||
+        (size != 0 && values == nullptr))
         return NEWTON_STATUS_INVALID_ARGUMENT;
     std::uint64_t local_count = 0, local_sum = 0;
     for (std::size_t i = 0; i < size; ++i) {
