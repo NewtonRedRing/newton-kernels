@@ -250,13 +250,13 @@ private:
                 (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
             if (word) token.push_back(static_cast<char>(
                 c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c));
-#ifdef NEWTON_SELECTIVE_FAULT_TRACE
-            std::fputs("TRACE tokenizer after character\n", stderr); std::fflush(stderr);
-#endif
             else if (!token.empty()) {
                 visit(token);
                 token.clear();
             }
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+            std::fputs("TRACE tokenizer after character\n", stderr); std::fflush(stderr);
+#endif
         }
         if (!token.empty()) visit(token);
     }
