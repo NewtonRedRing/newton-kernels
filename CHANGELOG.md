@@ -1,24 +1,39 @@
 # Changelog
 
-## Unreleased — columnar, specialized fusion and opt-in language bridges
+Changes are recorded here for the development-preview series. Unreleased
+features should not be interpreted as a new published release.
 
-- Borrowed numeric/string columns, validity bitmaps, batch descriptors and Arrow C Data primitive-import adapter.
-- Caller-buffer selection/reduction; AOT scalar/AVX2/ARM NEON unsigned filter.
-- Strict exact-cents CSV aggregation with a faster single-pass numeric implementation and a retained general parser path.
-- Differential tests, Clang fuzzing, independent installed-package consumer, equal-input benchmark artifacts and a dedicated evidence workflow.
-- Optional in-process shared C ABI, Python ctypes/Rust wrappers and local Conan/vcpkg packaging; no central runtime.
-- Speed gains and regressions documented with run-specific provenance. Not a v1.0 release yet.
+## Unreleased
 
+### Documentation and developer experience
+
+- Introduced a dedicated GitHub Pages documentation portal alongside the
+  benchmark dashboard, with accessible navigation and linked source references.
+- Added a central Markdown documentation index, local link validation and
+  repository-hygiene ignore rules.
+
+### Columnar, parsing and optional language integrations
+
+- Added borrowed numeric/string column views, validity bitmaps, batch
+  descriptors and Arrow C Data compatible primitive imports.
+- Added caller-buffer selection/reduction, optional scalar/AVX2/ARM NEON
+  filtering and checked single-pass numeric CSV aggregation.
+- Added optional in-process C ABI and Python/Rust FFI wrappers, local Conan
+  recipe and vcpkg overlay.
+- Added focused differential testing, fuzzing, independent installed-package
+  consumers and same-host benchmark evidence.
+
+### Performance strategies and experiments
+
+- Added explicit scalar/AVX2/AVX-512 scanning strategies with differential tests.
+- Added optional postings intersection and shortest-path strategies.
+- Added exact percentile selection alongside full sorting.
+- Retained benchmark evidence including losses; experimental optimizations
+  require the established regression checks before integration.
 
 ## 0.1.0 — development preview
 
-- Initial C++20 modular API, CMake install/export targets and offline build.
-- Memory mapping, aligned buffers, ASCII text search, CSV parsing, scalar/AVX2 byte scanning, aggregation, CSR graphs and thread pool.
-- Unit, integration and smoke benchmarks, examples, CI, and contributor documentation.
-
-## Unreleased — selectable performance strategies
-
-- Independently implemented scalar / AVX2 / AVX-512 byte scans with explicit selection, runtime dispatch and differential tests.
-- Added small-list-first vs input-order postings intersection; binary vs radix heap Dijkstra with reusable query state.
-- Added exact percentile selection vs full sorting and deterministic strategy benchmarks.
-- Published CPU-scoped comparison results and strict no-third-party-code provenance policy.
+- Initial C++20 modular API with offline CMake install/export targets.
+- Read-only memory mapping, aligned buffers, ASCII search, CSV parsing,
+  byte scanning, grouping, joins, CSR graphs and a thread pool.
+- Tests, examples, CI, benchmark adapters and contribution guidance.
