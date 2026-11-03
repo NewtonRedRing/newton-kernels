@@ -28,3 +28,10 @@ add_executable(newton_columnar_tests unit/test_columnar.cpp)
 target_compile_features(newton_columnar_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_columnar_tests PRIVATE newton_analytics newton_parsing)
 add_test(NAME newton_columnar_tests COMMAND newton_columnar_tests)
+
+# Dedicated allocation-failure tests: isolated global new override must never
+# leak into the production library or other test executables.
+add_executable(newton_selective_fault_tests unit/test_selective_faults.cpp)
+target_compile_features(newton_selective_fault_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_selective_fault_tests PRIVATE newton_index)
+add_test(NAME newton_selective_fault_tests COMMAND newton_selective_fault_tests)
