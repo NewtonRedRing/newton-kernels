@@ -20,7 +20,11 @@ void check(bool yes, const char* why) {
 void* operator new(std::size_t size) {
     const auto index = failures_after.load(std::memory_order_relaxed);
     if (index >= 0) {
-        if (index == 0) throw std::bad_alloc();
+        if (index == 0) {
+            // Prevent recursive injected failures in exception machinery.
+            failures_after.store(-1, std::memory_order_relaxed);
+            throw std::bad_alloc();
+        }
         failures_after.store(index - 1, std::memory_order_relaxed);
     }
     if (void* result = std::malloc(size ? size : 1)) return result;
