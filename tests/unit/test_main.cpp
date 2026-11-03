@@ -57,6 +57,31 @@ void test_simd() {
         check(find_byte_using(binary, '\x7f', strategy) == 1026, "strategy binary tail");
         check(count_byte_using(binary, '\0', strategy) == 1026, "strategy NUL scan");
     }
+
+    // Differential scan oracle over every vector-tail length, seven
+    // unaligned starts, high bytes and embedded NULs.
+    for (std::size_t n = 0; n <= 257; ++n) {
+        std::string backing(n + 64, '\0');
+        for (std::size_t i = 0; i < backing.size(); ++i)
+            backing[i] = static_cast<char>((i * 37 + n * 19) & 255);
+        for (const std::size_t offset : {0u, 1u, 7u, 15u, 31u, 32u, 63u}) {
+            const std::string_view view(backing.data() + offset, n);
+            for (const char needle : {'\0', ',', '\x7f', '\xff'}) {
+                const auto where = view.find(needle);
+                const auto expected_find = where == std::string_view::npos ? n : where;
+                const auto expected_count = static_cast<std::size_t>(
+                    std::count(view.begin(), view.end(), needle));
+                for (auto strategy : {ByteScanStrategy::Auto, ByteScanStrategy::Scalar,
+                                      ByteScanStrategy::Avx2, ByteScanStrategy::Avx512}) {
+                    check(find_byte_using(view, needle, strategy) == expected_find,
+                          "SIMD unaligned first-match parity mismatch");
+                    check(count_byte_using(view, needle, strategy) == expected_count,
+                          "SIMD unaligned count parity mismatch");
+                }
+            }
+        }
+    }
+
     (void)newton::core::cpu_features();
 }
 void test_csv() {
@@ -135,6 +160,18 @@ void test_analytics() {
 void test_memory() {
     newton::memory::AlignedBuffer<int, 64> buf(17);
     check(buf.size() == 17 && reinterpret_cast<std::uintptr_t>(buf.data()) % 64 == 0, "aligned allocation");
+
+    newton::memory::AlignedBuffer<int, 64> empty(0);
+    check(empty.data() == nullptr && empty.size() == 0 && empty.span().empty(),
+          "zero-sized aligned buffer must not allocate");
+    newton::memory::AlignedBuffer<int, 64> moving(9);
+    auto* original = moving.data();
+    newton::memory::AlignedBuffer<int, 64> destination(2);
+    destination = std::move(moving);
+    check(destination.data() == original && destination.size() == 9 &&
+          moving.data() == nullptr && moving.size() == 0,
+          "aligned buffer move assignment lost or double-owned storage");
+
     const auto path = std::filesystem::temp_directory_path() / "newton-kernels-mapping-unit.tmp";
     { std::ofstream out(path, std::ios::binary); out << "abc\n"; }
     try {
