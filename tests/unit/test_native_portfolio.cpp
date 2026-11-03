@@ -83,6 +83,39 @@ void csv_mask_test() {
     throws<std::invalid_argument>([] {
         (void)newton::parsing::csv_structure_mask64(nullptr, 1);
     });
+
+    // Quote parity must carry across consecutive 64-byte blocks, even when
+    // a doubled quote straddles the boundary. Check bit positions exactly.
+    std::mt19937 mask_rng{0x2cd0ffee};
+    constexpr char alphabet[] = {'a', '"', ',', '\n', '\r', '0', '\0'};
+    for (std::size_t length = 1; length <= 512; length += 7) {
+        std::string input(length, 'x');
+        for (auto& c : input) c = alphabet[mask_rng() % 7];
+        if (length > 65) {
+            input[63] = '"';
+            input[64] = '"';
+        }
+        bool carried = false;
+        for (std::size_t base = 0; base < input.size(); base += 64) {
+            const auto size = std::min<std::size_t>(64, input.size() - base);
+            std::uint64_t commas = 0, line_ends = 0;
+            bool oracle = carried;
+            for (std::size_t i = 0; i < size; ++i) {
+                const char c = input[base + i];
+                if (c == '"') oracle = !oracle;
+                else if (!oracle) {
+                    if (c == ',') commas |= std::uint64_t{1} << i;
+                    if (c == '\n' || c == '\r') line_ends |= std::uint64_t{1} << i;
+                }
+            }
+            const auto got = newton::parsing::csv_structure_mask64(
+                input.data() + base, size, carried);
+            check(got.commas == commas && got.line_ends == line_ends &&
+                  got.inside_quotes == oracle, "CSV mask cross-block parity mismatch");
+            carried = oracle;
+        }
+    }
+
 }
 void numbers_test() {
     using namespace newton::parsing;
@@ -123,6 +156,31 @@ void csv_decode_test() {
         std::array<char, 2> tiny_scratch{};
         (void)newton::parsing::decode_csv_fields_into(row, fields, tiny_scratch);
     });
+    // Exact-capacity scratch must succeed; one byte too little must fail.
+    const std::string exact = "\"a\"\"b\",\"c\"\"d\"";
+    std::array<std::string_view, 2> pair_fields{};
+    std::array<char, 6> exact_scratch{};
+    check(newton::parsing::decode_csv_fields_into(exact, pair_fields, exact_scratch) == 2 &&
+          pair_fields[0] == "a\"b" && pair_fields[1] == "c\"d",
+          "Escaped CSV scratch exact capacity mismatch");
+    std::array<char, 5> short_scratch{};
+    throws<std::length_error>([&] {
+        (void)newton::parsing::decode_csv_fields_into(exact, pair_fields, short_scratch);
+    });
+    std::array<char, 0> no_scratch{};
+    check(newton::parsing::decode_csv_fields_into("\"no escapes\",ok",
+          pair_fields, no_scratch) == 2 &&
+          pair_fields[0] == "no escapes" && pair_fields[1] == "ok",
+          "No-escape CSV field should borrow input without scratch");
+    throws<std::length_error>([&] {
+        std::array<std::string_view, 1> one_field{};
+        (void)newton::parsing::decode_csv_fields_into("a,b", one_field, exact_scratch);
+    });
+    throws<std::invalid_argument>([&] {
+        (void)newton::parsing::decode_csv_fields_into("\"a\"tail",
+             pair_fields, exact_scratch);
+    });
+
 }
 void packing_test() {
     std::array<std::uint64_t, 7> input{
@@ -241,6 +299,48 @@ void fused_join_test() {
         left, groups, values, right, heads, links, counts, sums);
     check(n == 5 && counts[0] == 3 && counts[1] == 2 &&
           sums[0] == 60 && sums[1] == 60, "Fused join grouped result");
+
+    // Bad caller-owned scratch must be rejected before modifying outputs.
+    std::array<std::uint64_t, 2> sentinel_count{17, 19}, sentinel_sum{23, 29};
+    std::array<std::size_t, 0> empty_heads{};
+    throws<std::length_error>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            left, groups, values, right, empty_heads, links,
+            sentinel_count, sentinel_sum);
+    });
+    check(sentinel_count == std::array<std::uint64_t, 2>{17, 19} &&
+          sentinel_sum == std::array<std::uint64_t, 2>{23, 29},
+          "Fused join preflight modified output on empty buckets");
+    std::array<std::size_t, 2> too_few_links{};
+    throws<std::length_error>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            left, groups, values, right, heads, too_few_links,
+            sentinel_count, sentinel_sum);
+    });
+    check(sentinel_count == std::array<std::uint64_t, 2>{17, 19} &&
+          sentinel_sum == std::array<std::uint64_t, 2>{23, 29},
+          "Fused join preflight modified output on short links");
+    const std::array<std::uint32_t, 4> invalid_group{0, 1, 2, 0};
+    throws<std::out_of_range>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            left, invalid_group, values, right, heads, links,
+            sentinel_count, sentinel_sum);
+    });
+    check(sentinel_count == std::array<std::uint64_t, 2>{17, 19} &&
+          sentinel_sum == std::array<std::uint64_t, 2>{23, 29},
+          "Invalid group modified output before validation");
+    const std::array<std::uint64_t, 2> high_values{
+        std::numeric_limits<std::uint64_t>::max(), 1};
+    const std::array<std::uint64_t, 2> duplicate_keys{7, 7};
+    const std::array<std::uint32_t, 2> zero_groups{0, 0};
+    const std::array<std::uint64_t, 2> right_match{7, 7};
+    std::array<std::size_t, 4> dup_heads{}, dup_links{};
+    throws<std::overflow_error>([&] {
+        (void)newton::analytics::fused_join_group_sum_into(
+            duplicate_keys, zero_groups, high_values, right_match,
+            dup_heads, dup_links, counts, sums);
+    });
+
     newton::core::PhaseSample sample{"join"};
     { newton::core::ScopedPhase timing(sample); }
     check(sample.elapsed_ns < std::numeric_limits<std::uint64_t>::max(),
