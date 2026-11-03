@@ -83,6 +83,15 @@ function(newton_module name)
   endif()
 endfunction()
 
+# Header-only columnar views and Arrow C Data Interface adapter.
+add_library(newton_columnar INTERFACE)
+add_library(NewtonKernels::columnar ALIAS newton_columnar)
+set_target_properties(newton_columnar PROPERTIES EXPORT_NAME columnar)
+target_compile_features(newton_columnar INTERFACE cxx_std_20)
+target_include_directories(newton_columnar INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
 newton_module(core src/core/cpu_features.cpp)
 newton_module(memory src/memory/mapped_file.cpp)
 newton_module(simd src/simd/byte_scan.cpp)
@@ -104,6 +113,7 @@ install(TARGETS newton_core newton_memory newton_simd newton_parsing
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS newton_columnar EXPORT NewtonKernelsTargets)
 install(EXPORT NewtonKernelsTargets
   NAMESPACE NewtonKernels::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NewtonKernels)
