@@ -136,6 +136,18 @@ void index_property() {
                     "single/repeated token phrase mismatch");
         }
     }
+
+    // Verify both sides of the stack-scratch / dynamic-scratch boundary.
+    newton::index::InvertedIndex long_phrases;
+    const std::string ten_terms = "one two three four five six seven eight nine ten";
+    require(long_phrases.add_document(ten_terms) == 0, "long phrase document ID");
+    require(long_phrases.search_phrase("one two three four five six seven eight") ==
+                std::vector<std::uint32_t>{0}, "eight-term stack phrase mismatch");
+    require(long_phrases.search_phrase(ten_terms) ==
+                std::vector<std::uint32_t>{0}, "ten-term dynamic phrase mismatch");
+    require(long_phrases.search_phrase("one two three four five six seven eight nine absent").empty(),
+            "long phrase must not report a missing term");
+
 }
 } // namespace
 int main() {
