@@ -6,6 +6,7 @@ struct CpuFeatures {
     bool avx512f = false;
     bool avx512bw = false;
 };
-// Reports support available to the current process, not just CPU hardware.
+// Reports process-usable instruction support (not merely hardware flags).
+// Lazily snapshotted at first call; subsequent calls do not repeat detection.
 [[nodiscard]] CpuFeatures cpu_features() noexcept;
 } // namespace newton::core
