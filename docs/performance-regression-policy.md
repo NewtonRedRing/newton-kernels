@@ -7,12 +7,12 @@
 - The historical, published **22-case** benchmark suite is pinned to commit
   [a3ccc650](https://github.com/NewtonRedRing/newton-kernels/commit/a3ccc65021181561aec1c8fe284bdeb7c8e1234c)
   (2026-11-02). The immutable suite manifest lives in
-  \`tools/performance_guard.py\`: six classic cases and 16 extended cases,
+  `tools/performance_guard.py`: six classic cases and 16 extended cases,
   protecting **all eight existing modules**.
-- Every pull request to \`main\` builds the candidate, the pull request's current
+- Every pull request to `main` builds the candidate, the pull request's current
   base revision, and the published anchor **on the same GitHub Actions runner**
   with the same compiler and CMake options.
-- Every push to \`main\` also checks the new revision against its prior commit
+- Every push to `main` also checks the new revision against its prior commit
   and the published anchor.
 - Every case executes five interleaved rounds of 11 in-process benchmark
   repetitions, using fixed fixture parameters and the original seed.
@@ -21,7 +21,9 @@
   invalid JSON, build failures, or disagreements fail the job.
 - Any positive paired-median slowdown is surfaced as a warning; the check
   **fails** when the candidate is >3% slower and slower in at least four of five
-  paired rounds against **either** reference. All raw samples and the report
+  paired rounds against **either** reference. If Git confirms production/build/benchmark
+  trees are byte-identical to the previous main, differences are treated as
+  VM scheduling warnings rather than proof of a code-caused regression. All raw samples and the report
   are uploaded, including warnings and losses.
 
 **Interpretation:** A GitHub-hosted VM cannot guarantee zero variance, and a
@@ -34,21 +36,21 @@ without representative end-to-end evidence.
 
 ## Make this check genuinely required
 
-At the moment this workflow was introduced, GitHub reported \`main\` as
+At the moment this workflow was introduced, GitHub reported `main` as
 **unprotected**. A workflow alone does not prevent bypass through direct pushes,
 admins, or disabling checks.
 
 As repository administrator, go to **Settings → Rules → Rulesets → New branch
-ruleset**, target \`main\`, and enable:
+ruleset**, target `main`, and enable:
 
 1. Require a pull request before merging and block direct pushes.
 2. Require status checks to pass, selecting the check named
-   **\`compare\`** from workflow **Performance regression guard**.
+   **`compare`** from workflow **Performance regression guard**.
    Also require the existing CI build/test check(s).
 3. Require branches to be up to date before merging; disallow bypass except
    explicit emergency administrators and require evidence for any exception.
-4. Restrict or review edits to \`.github/workflows/performance-guard.yml\`,
-   \`tools/performance_guard.py\` and the fixed benchmark fixtures. Consider
+4. Restrict or review edits to `.github/workflows/performance-guard.yml`,
+   `tools/performance_guard.py` and the fixed benchmark fixtures. Consider
    CODEOWNERS/approval rules so a PR cannot silently remove the guard.
 
 The exact check name must be selected from a completed Actions run in the
@@ -67,10 +69,10 @@ absolute timings across different physical machines.
 
 ## Run locally
 
-Build \`newton_compare\` and \`newton_compare_extended\` for each of the
+Build `newton_compare` and `newton_compare_extended` for each of the
 three revisions using the CMake switches in the workflow, then run:
 
-\`\`\`sh
+```sh
 python3 candidate/tools/performance_guard.py \
   --candidate-classic build-candidate/benchmarks/competitors/newton_compare \
   --candidate-extended build-candidate/benchmarks/competitors/newton_compare_extended \
@@ -79,7 +81,9 @@ python3 candidate/tools/performance_guard.py \
   --anchor-classic build-anchor/benchmarks/competitors/newton_compare \
   --anchor-extended build-anchor/benchmarks/competitors/newton_compare_extended \
   --candidate-sha <candidate> --base-sha <base> --out performance-evidence
-\`\`\`
+```
+
+The workflow checks that source trees under CMake/configuration, src, include and benchmarks match the previous main, and suppresses noise-only blocking if they are identical. Every reported measurement is still preserved.
 
 The code never uses previously recorded milliseconds as a blocking comparison;
 the older published results were measured on a different host. Instead, it

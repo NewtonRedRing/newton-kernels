@@ -168,6 +168,13 @@ def run(args: argparse.Namespace) -> dict:
                         args.max_regression_pct / 100.0, args.min_slow_rounds)
             for rev in ("base", "anchor")
         }
+        # No production/build/fixture source changed vs base: keep variance
+        # visible, but never reject a docs-only PR for VM scheduling noise.
+        if args.protected_code_identical:
+            for comparison in comparisons.values():
+                if comparison["status"] == "FAIL":
+                    comparison["status"] = "WARN"
+                    comparison["reason"] = "unchanged protected source tree; timing noise"
         overall = "FAIL" if any(x["status"] == "FAIL" for x in comparisons.values()) \
             else "WARN" if any(x["status"] == "WARN" for x in comparisons.values()) \
             else "PASS"
@@ -188,6 +195,7 @@ def run(args: argparse.Namespace) -> dict:
 
     return {
         "generated_utc": datetime.now(timezone.utc).isoformat(),
+        "protected_code_identical_to_base": bool(args.protected_code_identical),
         "machine": {
             "platform": platform.platform(), "processor": platform.processor(),
             "cpu_count": os.cpu_count(), "python": platform.python_version(),
@@ -216,9 +224,9 @@ def markdown(report: dict) -> str:
     lines = [
         "# NewtonKernels performance regression guard",
         "",
-        f"Candidate: \`{report['revisions']['candidate']}\`",
-        f"Merge base: \`{report['revisions']['base']}\`",
-        f"Published anchor: \`{PUBLISHED_ANCHOR}\`",
+        f"Candidate: `{report['revisions']['candidate']}`",
+        f"Merge base: `{report['revisions']['base']}`",
+        f"Published anchor: `{PUBLISHED_ANCHOR}`",
         "",
         f"**{report['case_count']} protected cases**; "
         f"{len(report['failed_cases'])} blocking regressions; "
@@ -257,6 +265,7 @@ def main() -> int:
     for revision in ("candidate", "base", "anchor"):
         for suite in ("classic", "extended"):
             parser.add_argument(f"--{revision}-{suite}", type=Path, required=True)
+    parser.add_argument("--protected-code-identical", type=int, choices=(0, 1), default=0)
     parser.add_argument("--candidate-sha", required=True)
     parser.add_argument("--base-sha", required=True)
     parser.add_argument("--out", type=Path, required=True)

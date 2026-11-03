@@ -47,6 +47,10 @@ class PerformanceGuardPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             guard.decide(times([100] * 4), times([100] * 5), .03, 4)
 
+    def test_report_does_not_hide_large_slowdowns(self):
+        result = guard.decide(times([140] * 5), times([100] * 5), .03, 4)
+        self.assertEqual(result["status"], "FAIL")
+
     def test_all_reference_data_must_be_real(self):
         case = guard.Case("classic", "scan", 1024, 1)
         self.assertEqual(case.key, "scan:1024:1")

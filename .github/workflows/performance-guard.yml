@@ -55,6 +55,17 @@ jobs:
             cmake --build "build-$revision" \
               --target newton_compare newton_compare_extended --parallel 2
           done
+      - name: Detect identical protected source code versus main
+        shell: bash
+        run: |
+          set -euo pipefail
+          if diff -q \
+              <(git -C candidate ls-tree -r HEAD -- CMakeLists.txt CMakePresets.json cmake src include benchmarks) \
+              <(git -C base ls-tree -r HEAD -- CMakeLists.txt CMakePresets.json cmake src include benchmarks) >/dev/null; then
+            echo "PROTECTED_CODE_IDENTICAL=1" >> "$GITHUB_ENV"
+          else
+            echo "PROTECTED_CODE_IDENTICAL=0" >> "$GITHUB_ENV"
+          fi
       - name: Check every established benchmark against previous and published revisions
         shell: bash
         run: |
@@ -67,7 +78,8 @@ jobs:
             --anchor-classic build-anchor/benchmarks/competitors/newton_compare \
             --anchor-extended build-anchor/benchmarks/competitors/newton_compare_extended \
             --candidate-sha "$CANDIDATE_SHA" --base-sha "$BASE_SHA" \
-            --out performance-evidence --rounds 5 --repetitions 11 \
+            --out performance-evidence --protected-code-identical "$PROTECTED_CODE_IDENTICAL" \
+            --rounds 5 --repetitions 11 \
             --max-regression-pct 3.0 --min-slow-rounds 4
       - name: Upload unfiltered samples and regression decisions
         if: always()
