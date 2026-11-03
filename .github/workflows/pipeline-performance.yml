@@ -1,0 +1,42 @@
+name: Fused pipeline performance evidence
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "benchmarks/fused_pipeline_compare.cpp"
+      - "include/newton/analytics/csv_fused.hpp"
+      - "include/newton/columnar/**"
+      - ".github/workflows/pipeline-performance.yml"
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure benchmark
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF
+      - name: Build benchmark
+        run: cmake --build build --target newton_pipeline_compare --parallel 2
+      - name: Validate equivalent output on 100k rows
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          command = "./build/benchmarks/newton_pipeline_compare"
+          a = json.loads(subprocess.check_output([command, "--impl=owned", "--rows=100000"], text=True))
+          b = json.loads(subprocess.check_output([command, "--impl=fused", "--rows=100000"], text=True))
+          assert a == b, (a,b)
+          print("Exact output parity:", a)
+          PY
+      - name: Alternate whole-process trials on same host
+        run: |
+          python3 tools/benchmark_ab.py \
+            --before "./build/benchmarks/newton_pipeline_compare --impl=owned --rows=100000" \
+            --after "./build/benchmarks/newton_pipeline_compare --impl=fused --rows=100000" \
+            --cycles 8 --warmup 2 --output evidence/pipeline-100k.json
+      - name: Upload all raw samples
+        uses: actions/upload-artifact@v4
+        with:
+          name: newton-pipeline-same-host-evidence
+          path: evidence/pipeline-100k.json
+          if-no-files-found: error
