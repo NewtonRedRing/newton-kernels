@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=ON -DNEWTON_WARNINGS_AS_ERRORS=ON
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=ON -DNEWTON_BUILD_C_API=ON -DNEWTON_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }} --parallel 2
       - name: Test
