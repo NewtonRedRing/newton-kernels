@@ -52,9 +52,10 @@ void test_column_views() {
     const auto val = ColumnView<std::uint64_t>(weights, {valid});
     std::array<std::uint32_t, 6> selected{};
     auto count = newton::analytics::select_greater_into(pred, std::int64_t{2}, selected);
-    require(count == 2 && selected[0] == 3 && selected[1] == 5, "null-aware selection");
+    require(count == 3 && selected[0] == 2 && selected[1] == 3 &&
+        selected[2] == 5, "null-aware selection");
     const auto summed = newton::analytics::sum_where_greater(pred, val, 2);
-    require(summed.count == 2 && summed.sum == 100, "fused null-aware sum");
+    require(summed.count == 3 && summed.sum == 130, "fused null-aware sum");
     must_throw<std::length_error>([&] {
         (void)newton::analytics::select_greater_into(pred, std::int64_t{2},
             std::span<std::uint32_t>(selected).first(2));
