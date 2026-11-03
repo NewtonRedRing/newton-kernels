@@ -14,7 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "showcase"
-MARKDOWN_LINK = re.compile(r"!?(?:\\[[^\\]\\n]*\\])\\(([^)]+)\\)")
+MARKDOWN_LINK = re.compile(r"!?\[[^\]\n]*\]\(([^)]+)\)")
 
 
 class ParsedPage(HTMLParser):
@@ -59,8 +59,6 @@ def local_target(source: Path, raw: str) -> tuple[Path, str] | None:
         target.relative_to(ROOT)
     except ValueError as e:
         raise ValueError("local link escapes repository") from e
-    if target.is_dir():
-        target /= "index.html"
     return target, unquote(parsed.fragment)
 
 
@@ -82,6 +80,8 @@ def check() -> int:
                 if target_data is None:
                     continue
                 target, fragment = target_data
+                if target.is_dir():
+                    target = target / "index.html"
                 if not target.is_file():
                     errors.append(f"{source.relative_to(ROOT)}: missing {kind} {url!r}")
                 elif fragment and target.suffix.lower() == ".html":
