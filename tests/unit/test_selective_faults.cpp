@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdlib>
+#include <cstdio>
 #include <iostream>
 #include <new>
 #include <stdexcept>
@@ -54,6 +55,8 @@ int main() {
         bool query_success = false, document_success = false, finalize_success = false;
         for (int n = 0; n < 160; ++n) {
             SelectiveTermIndex idx;
+            std::fprintf(stderr, "fault-test phase=query offset=%d\\n", n);
+            std::fflush(stderr);
             idx.add_query("alpha");
             const bool failed = failure_at(n, [&] {
                 idx.add_query("beta gamma delta epsilon");
@@ -75,6 +78,8 @@ int main() {
         }
         for (int n = 0; n < 160; ++n) {
             SelectiveTermIndex idx;
+            std::fprintf(stderr, "fault-test phase=document offset=%d\\n", n);
+            std::fflush(stderr);
             idx.add_query("alpha beta gamma delta epsilon");
             require(idx.add_document("alpha beta") == 0, "Baseline document ID");
             const bool failed = failure_at(n, [&] {
@@ -106,6 +111,8 @@ int main() {
         }
         for (int n = 0; n < 160; ++n) {
             SelectiveTermIndex idx;
+            std::fprintf(stderr, "fault-test phase=finalize offset=%d\\n", n);
+            std::fflush(stderr);
             idx.add_query("alpha beta gamma delta");
             idx.add_document("alpha beta gamma");
             idx.add_document("beta gamma delta");
