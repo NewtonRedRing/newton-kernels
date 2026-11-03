@@ -48,6 +48,10 @@ target_link_libraries(your_app PRIVATE NewtonKernels::parsing NewtonKernels::mem
 
 Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](examples/) and [`docs/getting-started.md`](docs/getting-started.md).
 
+## v1 architecture proposal (design only)
+
+The [proposed NewtonKernels v1 architecture and gate-driven implementation roadmap](docs/v1-architecture-roadmap.md) documents a **zero-central-runtime** direction: direct C++20 APIs, independent static modules, no mandatory context/JIT/daemon/autotuner, caller-owned buffers, optional AOT hardware dispatch, columnar batches and end-to-end benchmark requirements. **This is a design proposal, not an implemented or released feature.**
+
 ## Benchmarks
 
 `cmake -S . -B build/release -DNEWTON_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release` builds opt-in microbenchmarks. Benchmark output is *not* comparable across hosts without identical datasets, toolchains, CPU governors and build flags. See the [measured strategy comparison](docs/performance-comparison.md) and [`docs/benchmarking.md`](docs/benchmarking.md).
