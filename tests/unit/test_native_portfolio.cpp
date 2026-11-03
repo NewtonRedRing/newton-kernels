@@ -117,8 +117,8 @@ void csv_decode_test() {
         (void)newton::parsing::decode_csv_fields_into("\"x\"z", fields, scratch);
     });
     throws<std::length_error>([&] {
-        std::array<char, 2> small{};
-        (void)newton::parsing::decode_csv_fields_into(row, fields, small);
+        std::array<char, 2> tiny_scratch{};
+        (void)newton::parsing::decode_csv_fields_into(row, fields, tiny_scratch);
     });
 }
 void packing_test() {
