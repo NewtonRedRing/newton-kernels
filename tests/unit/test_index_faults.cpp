@@ -45,6 +45,18 @@ void operator delete[](void* ptr, std::size_t) noexcept { ::operator delete(ptr)
 int main() {
     try {
         prepared_bad_alloc = std::make_exception_ptr(std::bad_alloc{});
+        // Isolate basic Windows/MSVC global new exception handling from
+        // the index insertion and rollback campaign.
+        std::fputs("index_faults direct allocator smoke begin\n", stderr);
+        std::fflush(stderr);
+        failures_after.store(0, std::memory_order_relaxed);
+        bool smoke_caught = false;
+        try { void* p = ::operator new(16); ::operator delete(p); }
+        catch (const std::bad_alloc&) { smoke_caught = true; }
+        failures_after.store(-1, std::memory_order_relaxed);
+        std::fprintf(stderr, "index_faults direct allocator smoke caught=%d\n", int(smoke_caught));
+        std::fflush(stderr);
+        check(smoke_caught, "Injected global new smoke did not throw");
         int injected_failures = 0;
         bool observed_success = false;
         for (int fail_at = 0; fail_at < 200; ++fail_at) {
