@@ -14,8 +14,14 @@
   with the same compiler and CMake options.
 - Every push to `main` also checks the new revision against its prior commit
   and the published anchor.
-- Every case executes five interleaved rounds of 11 in-process benchmark
+- Each original case executes five interleaved rounds of 11 in-process benchmark
   repetitions, using fixed fixture parameters and the original seed.
+- The six existing CSV pipeline cases (owned, fused, fast; 100K and 1M rows)
+  are separately protected against **previous main** using shared
+  baseline-generated fixtures and seven ABBA/BAAB rounds each. The fixed
+  November 2 anchor predates these cases and cannot evaluate them.
+- The branch ruleset must select the unique **`regression-guard`** check,
+  not generic `compare` (used in other workflows).
 - Exact output checksum, item count, fixture size, CLI parameters, and process
   determinism are verified across all three builds. Missing cases, binaries,
   invalid JSON, build failures, or disagreements fail the job.
@@ -45,7 +51,7 @@ ruleset**, target `main`, and enable:
 
 1. Require a pull request before merging and block direct pushes.
 2. Require status checks to pass, selecting the check named
-   **`compare`** from workflow **Performance regression guard**.
+   **`regression-guard`** from workflow **Performance regression guard**.
    Also require the existing CI build/test check(s).
 3. Require branches to be up to date before merging; disallow bypass except
    explicit emergency administrators and require evidence for any exception.
@@ -53,7 +59,7 @@ ruleset**, target `main`, and enable:
    `tools/performance_guard.py` and the fixed benchmark fixtures. Consider
    CODEOWNERS/approval rules so a PR cannot silently remove the guard.
 
-The exact check name must be selected from a completed Actions run in the
+The exact check name is `regression-guard`; select it from a completed Actions run in the
 GitHub UI. The GitHub connector could not configure repository branch
 protection automatically.
 
@@ -85,7 +91,9 @@ python3 candidate/tools/performance_guard.py \
 
 The workflow checks that source trees under CMake/configuration, src, include and benchmarks match the previous main, and suppresses noise-only blocking if they are identical. Every reported measurement is still preserved.
 
-The code never uses previously recorded milliseconds as a blocking comparison;
+The new CSV pipeline gate uses only current-main vs candidate measured on the same runner and never compares to historical milliseconds on different hosts.
+
+The original 22-case guard never uses previously recorded milliseconds as a blocking comparison;
 the older published results were measured on a different host. Instead, it
 rebuilds the published **source commit** and remeasures it alongside the
 candidate on the same machine.
