@@ -7,6 +7,12 @@ on:
       - "include/newton/analytics/csv_fused.hpp"
       - "include/newton/analytics/csv_numeric_fast.hpp"
       - "include/newton/columnar/**"
+      - "tests/unit/test_columnar.cpp"
+      - "src/c_api.cpp"
+      - "include/newton/c_api/**"
+      - "bindings/**"
+      - "fuzz/**"
+      - "CMakeLists.txt"
       - ".github/workflows/pipeline-performance.yml"
 permissions:
   contents: read
