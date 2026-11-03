@@ -57,7 +57,22 @@ void test_simd() {
         check(find_byte_using(binary, '\x7f', strategy) == 1026, "strategy binary tail");
         check(count_byte_using(binary, '\0', strategy) == 1026, "strategy NUL scan");
     }
-    (void)newton::core::cpu_features();
+    const auto features = newton::core::cpu_features();
+    for (int repeat = 0; repeat < 256; ++repeat) {
+        const auto next = newton::core::cpu_features();
+        check(features.sse42 == next.sse42 && features.avx2 == next.avx2 &&
+              features.avx512f == next.avx512f &&
+              features.avx512bw == next.avx512bw,
+              "CPU feature snapshot changed between calls");
+    }
+#if (defined(__x86_64__) || defined(__i386__)) && (defined(__GNUC__) || defined(__clang__))
+    __builtin_cpu_init();
+    check(features.sse42 == (__builtin_cpu_supports("sse4.2") != 0) &&
+          features.avx2 == (__builtin_cpu_supports("avx2") != 0) &&
+          features.avx512f == (__builtin_cpu_supports("avx512f") != 0) &&
+          features.avx512bw == (__builtin_cpu_supports("avx512bw") != 0),
+          "cached CPU feature snapshot differs from compiler CPU detection");
+#endif
 }
 void test_csv() {
     using namespace newton::parsing;
@@ -131,6 +146,53 @@ void test_analytics() {
     hash_inner_join(left, right, [](const auto& p) { return p.first; }, [](const auto& p) { return p.first; },
         [&](const auto& l, const auto& r) { total += l.second + r.second; });
     check(total == 25, "duplicate-preserving join");
+
+    // Differential comparison against a quadratic exact-key oracle. Check the
+    // full multiset of row identities, not an order-dependent rolling digest.
+    for (std::uint32_t trial = 0; trial < 128; ++trial) {
+        std::uint64_t rng = 0x9e3779b97f4a7c15ULL + trial;
+        const auto next = [&rng]() {
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            return rng;
+        };
+        const std::uint32_t domain = 1 + trial % 73;
+        std::vector<std::pair<std::uint32_t, std::uint32_t>> a, b;
+        for (std::uint32_t i = 0; i < trial % 89; ++i)
+            a.emplace_back(static_cast<std::uint32_t>(next() % domain), i);
+        for (std::uint32_t i = 0; i < (trial * 7) % 113; ++i)
+            b.emplace_back(static_cast<std::uint32_t>(next() % domain), i);
+        std::vector<std::pair<std::uint32_t, std::uint32_t>> expected, actual;
+        for (const auto& lhs : a)
+            for (const auto& rhs : b)
+                if (lhs.first == rhs.first)
+                    expected.emplace_back(lhs.second, rhs.second);
+        hash_inner_join(a, b, [](const auto& r) { return r.first; },
+            [](const auto& r) { return r.first; },
+            [&](const auto& lhs, const auto& rhs) {
+                actual.emplace_back(lhs.second, rhs.second);
+            });
+        std::sort(expected.begin(), expected.end());
+        std::sort(actual.begin(), actual.end());
+        check(actual == expected, "optimized hash join lost or duplicated a pair");
+    }
+    const std::vector<std::pair<std::string, int>> words_left{
+        {"same", 1}, {"missing", 2}, {"same", 3}};
+    const std::vector<std::pair<std::string, int>> words_right{
+        {"same", 10}, {"same", 20}, {"other", 30}};
+    std::vector<std::pair<int, int>> word_pairs;
+    hash_inner_join(words_left, words_right,
+        [](const auto& x) { return x.first; },
+        [](const auto& x) { return x.first; },
+        [&](const auto& a, const auto& b) {
+            word_pairs.emplace_back(a.second, b.second);
+        });
+    std::sort(word_pairs.begin(), word_pairs.end());
+    check(word_pairs == std::vector<std::pair<int, int>>{
+        {1, 10}, {1, 20}, {3, 10}, {3, 20}},
+        "optimized hash join failed full string equality");
+
 }
 void test_memory() {
     newton::memory::AlignedBuffer<int, 64> buf(17);
