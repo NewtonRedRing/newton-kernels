@@ -156,7 +156,8 @@ void flat_hash_test() {
         check(hit && hit->count == e.first && hit->sum == e.second,
               "Flat table exact result mismatch");
     }
-    const std::array<std::uint64_t, 6> left{3,3,8,7,99,1}, right{3,7,3,3,9,99,8};
+    const std::array<std::uint64_t, 6> left{3,3,8,7,99,1};
+    const std::array<std::uint64_t, 7> right{3,7,3,3,9,99,8};
     std::vector<std::pair<std::size_t, std::size_t>> got, baseline;
     std::array<std::size_t, 16> heads{};
     std::array<std::size_t, 7> next{};
