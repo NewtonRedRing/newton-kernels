@@ -46,6 +46,18 @@ int main() {
         std::fprintf(stderr, "radix-fault direct allocator smoke caught=%d\n", int(smoke_caught));
         std::fflush(stderr);
         require(smoke_caught, "Direct global new injection did not throw");
+        std::fputs("radix-fault STL vector smoke begin\n", stderr);
+        std::fflush(stderr);
+        fail_after.store(0, std::memory_order_relaxed);
+        bool vector_caught = false;
+        try {
+            std::vector<std::uint64_t> v;
+            v.push_back(200);
+        } catch (const std::bad_alloc&) { vector_caught = true; }
+        fail_after.store(-1, std::memory_order_relaxed);
+        std::fprintf(stderr, "radix-fault STL vector smoke caught=%d\n", int(vector_caught));
+        std::fflush(stderr);
+        require(vector_caught, "Injected STL vector allocation did not throw");
         const std::array<std::uint64_t, 7> keys{200, 200, 201, 204, 205, 300, 302};
         int exceptions = 0;
         bool successful = false;
