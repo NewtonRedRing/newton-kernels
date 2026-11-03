@@ -4,3 +4,6 @@ add_executable(newton_graph_example shortest_path.cpp)
 target_link_libraries(newton_graph_example PRIVATE newton_graph)
 add_executable(newton_search_example text_search.cpp)
 target_link_libraries(newton_search_example PRIVATE newton_index)
+
+add_executable(newton_native_example native_pipeline.cpp)
+target_link_libraries(newton_native_example PRIVATE newton_parsing newton_analytics)
