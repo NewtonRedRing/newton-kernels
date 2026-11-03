@@ -57,12 +57,18 @@ int main() {
         for (int n = 0; n < 160; ++n) {
             std::fprintf(stderr, "selective_faults query offset %d\n", n);
             SelectiveTermIndex idx;
-            std::fprintf(stderr, "fault-test phase=query offset=%d\\n", n);
+            std::fprintf(stderr, "fault-test query constructed offset=%d\n", n);
             std::fflush(stderr);
             idx.add_query("alpha");
+            std::fprintf(stderr, "fault-test query seeded offset=%d\n", n);
+            std::fflush(stderr);
             const bool failed = failure_at(n, [&] {
+                std::fprintf(stderr, "fault-test query injecting offset=%d\n", n);
+                std::fflush(stderr);
                 idx.add_query("beta gamma delta epsilon");
             });
+            std::fprintf(stderr, "fault-test query returned offset=%d failed=%d\n", n, int(failed));
+            std::fflush(stderr);
             if (failed) {
                 ++query_failures;
                 require(idx.indexed_term_count() == 1,
