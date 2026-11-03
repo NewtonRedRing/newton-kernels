@@ -52,6 +52,17 @@ void operator delete[](void* ptr, std::size_t) noexcept { ::operator delete(ptr)
 int main() {
     using newton::index::SelectiveTermIndex;
     try {
+        // Distinguish an MSVC exception/allocator interception hang from an
+        // index rollback bug before entering the full failure-point sweep.
+        std::fputs("fault-test allocator smoke begin\n", stderr);
+        std::fflush(stderr);
+        const bool smoke_failed = failure_at(0, [] {
+            void* memory = ::operator new(16);
+            ::operator delete(memory);
+        });
+        std::fprintf(stderr, "fault-test allocator smoke returned=%d\n", int(smoke_failed));
+        std::fflush(stderr);
+        require(smoke_failed, "Injected global operator new did not fail");
         int query_failures = 0, document_failures = 0, finalize_failures = 0;
         bool query_success = false, document_success = false, finalize_success = false;
         for (int n = 0; n < 160; ++n) {
