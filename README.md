@@ -109,6 +109,17 @@ and CI workflow are configured for an external run and must pass before publishi
 
 The five-module competitors are independently authored standard-library references, not full competing high-level libraries. Peak RSS, CPU time, page faults and context switches are captured as **process-wide** diagnostics; cache-miss/IPC counters, energy, NUMA and allocation tracing have not been measured.
 
+## Performance regression protection
+
+The [performance regression guard](docs/performance-regression-policy.md) checks all
+22 historical cases for correctness and performance on each pull request. It
+rebuilds the candidate, current main and the pinned published baseline on the
+same runner, reports slowdowns and fails on confirmed regressions. All smaller
+regressions remain review-required warnings. The GitHub `main` ruleset must
+require its unique `regression-guard` check before merging new kernels.
+It also protects the six established CSV pipeline cases (owned, fused and fast
+at 100K and 1M rows) against the immediately preceding `main` revision.
+
 ## Limitations
 
 - `CsvParser` allocates owned `std::string` fields; for unquoted data, prefer the borrowed `for_each_delimited_record` API.
