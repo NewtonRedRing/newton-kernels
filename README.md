@@ -48,6 +48,10 @@ target_link_libraries(your_app PRIVATE NewtonKernels::parsing NewtonKernels::mem
 
 Set `CMAKE_PREFIX_PATH` to the installation prefix if needed. See [`examples/`](examples/) and [`docs/getting-started.md`](docs/getting-started.md).
 
+## Columnar data and fused execution
+
+New [borrowed columnar views, Arrow C Data Interface-compatible adapters, and fused CSV aggregation](docs/columnar-and-fusion.md) are provided as synchronous, caller-owned C++20 APIs. `NewtonKernels::columnar` is a header-only CMake target. The optional Arrow interoperability does not require an Arrow library or service. The new APIs are experimental pending performance and fuzz-testing evidence.
+
 ## v1 architecture proposal (design only)
 
 The [proposed NewtonKernels v1 architecture and gate-driven implementation roadmap](docs/v1-architecture-roadmap.md) documents a **zero-central-runtime** direction: direct C++20 APIs, independent static modules, no mandatory context/JIT/daemon/autotuner, caller-owned buffers, optional AOT hardware dispatch, columnar batches and end-to-end benchmark requirements. **This is a design proposal, not an implemented or released feature.**
