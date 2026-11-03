@@ -30,26 +30,25 @@ public:
             while (b < buckets_.size() && buckets_[b].empty()) ++b;
             auto min_key = std::numeric_limits<std::uint64_t>::max();
             for (const auto& e : buckets_[b]) if (e.first < min_key) min_key = e.first;
-            // All potentially throwing allocations happen before last_ or
-            // any queued entry changes. A failed reserve leaves the heap
-            // logically intact and safely retryable.
-            std::array<std::size_t, 65> incoming{};
-            for (const auto& e : buckets_[b]) {
-                const auto dest = static_cast<std::size_t>(
-                    64 - std::countl_zero(e.first ^ min_key));
-                ++incoming[dest];
-            }
-            for (std::size_t dest = 0; dest < b; ++dest) {
-                if (incoming[dest] == 0) continue;
-                const auto occupied = buckets_[dest].size();
-                if (incoming[dest] > std::numeric_limits<std::size_t>::max() - occupied)
-                    throw std::length_error("RadixHeap capacity overflow");
-                buckets_[dest].reserve(occupied + incoming[dest]);
-            }
-            last_ = min_key;
+            // Preserve the original bucket until redistribution commits.
+            // In the exceptional path, undo only the elements appended by
+            // this operation; no allocations are needed for the rollback.
+            const auto old_last = last_;
             auto entries = std::move(buckets_[b]);
-            buckets_[b].clear();
-            for (const auto& e : entries) buckets_[bucket(e.first)].push_back(e);
+            last_ = min_key;
+            std::size_t committed = 0;
+            try {
+                for (const auto& e : entries) {
+                    buckets_[bucket(e.first)].push_back(e);
+                    ++committed;
+                }
+            } catch (...) {
+                for (std::size_t i = 0; i < committed; ++i)
+                    buckets_[bucket(entries[i].first)].pop_back();
+                last_ = old_last;
+                buckets_[b] = std::move(entries);
+                throw;
+            }
         }
         auto entry = buckets_[0].back();
         buckets_[0].pop_back();

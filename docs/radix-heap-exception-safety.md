@@ -1,19 +1,24 @@
-# Track 14 — radix-heap strong exception safety
+# Track 14 — radix-heap exception safety (rollback design)
 
-On a pop that had to redistribute a nonempty radix bucket, the original
-algorithm updated `last_` and moved the entire bucket before pushing its
-entries into new buckets. If a vector allocation then failed, some entries
-were no longer reachable. A later pop could silently lose them.
+The previous implementation advanced `last_` and moved the source bucket
+before re-bucketing. If a destination `push_back` threw during allocation,
+the heap could lose entries and become inconsistent.
 
-The candidate computes the new bucket occupancy first, reserves the required
-capacity without mutating keys or the monotone bound, and only then moves
-entries and updates `last_`. A failed pre-allocation may increase capacity,
-but the observable heap contents, order and size remain unchanged. Entry
-moves are nonthrowing (pairs of integers) and all destination capacity is
-pre-reserved. The successful path does extra counting; any performance
-slowdown requires an honest no-regression evaluation.
+The revised implementation saves the old monotone bound and keeps every
+source entry in a moved local vector until **all** destination pushes succeed.
+If any push throws, all entries inserted during this redistribution are
+popped from their respective destinations, `last_` is restored, and the
+original source vector is moved back. These rollback operations do not
+allocate: integer pairs have nonthrowing destruction and vector move is
+nonthrowing with the default allocator. The observable queue state and
+ordering survive the exception. No extra histogram, reserve phase, or
+additional allocation is introduced on the successful path.
 
-A dedicated `std::bad_alloc` injection test checks all keys and the
-monotonic order after each failed redistribution attempt, then verifies
-a successful pop. The 22+6 performance guard and all multi-platform
-correctness checks remain mandatory.
+The original two-pass reserve prototype slowed the graph benchmarks by
+approximately 10–12% and was rejected; this rollback design specifically
+removes that counting overhead. No speed claim is made until fresh A/B
+measurements finish. A dedicated `std::bad_alloc` test verifies that all
+keys remain present and ordered after an interrupted redistributing pop.
+
+The original 22 protected cases, six CSV pipelines and platform correctness
+checks remain mandatory; thresholds have not been adjusted.
