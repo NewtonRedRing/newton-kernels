@@ -79,6 +79,7 @@ int main() {
             if (!failed) break;
         }
         for (int n = 0; n < 160; ++n) {
+            std::fprintf(stderr, "selective_faults document offset %d\n", n);
             SelectiveTermIndex idx;
             std::fprintf(stderr, "fault-test phase=document offset=%d\\n", n);
             std::fflush(stderr);
@@ -112,6 +113,7 @@ int main() {
             if (!failed) break;
         }
         for (int n = 0; n < 160; ++n) {
+            std::fprintf(stderr, "selective_faults finalize offset %d\n", n);
             SelectiveTermIndex idx;
             std::fprintf(stderr, "fault-test phase=finalize offset=%d\\n", n);
             std::fflush(stderr);
