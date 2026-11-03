@@ -235,12 +235,24 @@ public:
 private:
     template<class Visitor>
     static void tokenize(std::string_view text, Visitor&& visit) {
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+        std::fputs("TRACE tokenizer before string construction\n", stderr); std::fflush(stderr);
+#endif
         std::string token;
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+        std::fputs("TRACE tokenizer after string construction\n", stderr); std::fflush(stderr);
+#endif
         for (unsigned char c : text) {
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+            std::fputs("TRACE tokenizer before character\n", stderr); std::fflush(stderr);
+#endif
             const bool word = (c >= 'a' && c <= 'z') ||
                 (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
             if (word) token.push_back(static_cast<char>(
                 c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c));
+#ifdef NEWTON_SELECTIVE_FAULT_TRACE
+            std::fputs("TRACE tokenizer after character\n", stderr); std::fflush(stderr);
+#endif
             else if (!token.empty()) {
                 visit(token);
                 token.clear();
