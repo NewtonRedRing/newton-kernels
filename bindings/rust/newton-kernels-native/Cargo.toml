@@ -1,0 +1,10 @@
+[package]
+name = "newton-kernels-native"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Optional in-process Rust FFI wrapper for NewtonKernels C ABI"
+publish = false
+
+[lib]
+path = "src/lib.rs"
