@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.21)
+project(NewtonKernelsInstalledConsumer LANGUAGES CXX)
+find_package(NewtonKernels 0.1 CONFIG REQUIRED)
+add_executable(newton_installed_consumer main.cpp)
+target_compile_features(newton_installed_consumer PRIVATE cxx_std_20)
+target_link_libraries(newton_installed_consumer PRIVATE NewtonKernels::analytics NewtonKernels::parsing)
+enable_testing()
+add_test(NAME installed_consumer COMMAND newton_installed_consumer)
