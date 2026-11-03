@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <iostream>
 #include <new>
+#include <exception>
 #include <stdexcept>
 #include <vector>
 #include <array>
@@ -13,6 +14,9 @@
 
 namespace {
 std::atomic<int> fail_after{-1};
+// Initialized before injection; rethrowing avoids constructing a new exception
+// while the global allocation override is deliberately failing.
+std::exception_ptr prepared_bad_alloc;
 void require(bool ok, const char* why) {
     if (!ok) throw std::runtime_error(why);
 }
@@ -40,11 +44,11 @@ void* operator new(std::size_t n) {
         fail_after.store(-1, std::memory_order_relaxed);
         std::fprintf(stderr, "fault-test operator new: injected failure size=%zu\\n", n);
         std::fflush(stderr);
-        throw std::bad_alloc();
+        std::rethrow_exception(prepared_bad_alloc);
     }
     if (count > 0) fail_after.store(count - 1, std::memory_order_relaxed);
     if (void* ptr = std::malloc(n ? n : 1)) return ptr;
-    throw std::bad_alloc();
+    std::rethrow_exception(prepared_bad_alloc);
 }
 void operator delete(void* ptr) noexcept { std::free(ptr); }
 void operator delete(void* ptr, std::size_t) noexcept { std::free(ptr); }
@@ -55,6 +59,7 @@ void operator delete[](void* ptr, std::size_t) noexcept { ::operator delete(ptr)
 int main() {
     using newton::index::SelectiveTermIndex;
     try {
+        prepared_bad_alloc = std::make_exception_ptr(std::bad_alloc{});
         // Distinguish an MSVC exception/allocator interception hang from an
         // index rollback bug before entering the full failure-point sweep.
         std::fputs("fault-test allocator smoke begin\n", stderr);
