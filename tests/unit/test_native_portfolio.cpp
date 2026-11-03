@@ -156,6 +156,31 @@ void csv_decode_test() {
         std::array<char, 2> tiny_scratch{};
         (void)newton::parsing::decode_csv_fields_into(row, fields, tiny_scratch);
     });
+    // Exact-capacity scratch must succeed; one byte too little must fail.
+    const std::string exact = "\"a\"\"b\",\"c\"\"d\"";
+    std::array<std::string_view, 2> pair_fields{};
+    std::array<char, 6> exact_scratch{};
+    check(newton::parsing::decode_csv_fields_into(exact, pair_fields, exact_scratch) == 2 &&
+          pair_fields[0] == "a\"b" && pair_fields[1] == "c\"d",
+          "Escaped CSV scratch exact capacity mismatch");
+    std::array<char, 5> short_scratch{};
+    throws<std::length_error>([&] {
+        (void)newton::parsing::decode_csv_fields_into(exact, pair_fields, short_scratch);
+    });
+    std::array<char, 0> no_scratch{};
+    check(newton::parsing::decode_csv_fields_into("\"no escapes\",ok",
+          pair_fields, no_scratch) == 2 &&
+          pair_fields[0] == "no escapes" && pair_fields[1] == "ok",
+          "No-escape CSV field should borrow input without scratch");
+    throws<std::length_error>([&] {
+        std::array<std::string_view, 1> one_field{};
+        (void)newton::parsing::decode_csv_fields_into("a,b", one_field, exact_scratch);
+    });
+    throws<std::invalid_argument>([&] {
+        (void)newton::parsing::decode_csv_fields_into("\"a\"tail",
+             pair_fields, exact_scratch);
+    });
+
 }
 void packing_test() {
     std::array<std::uint64_t, 7> input{
