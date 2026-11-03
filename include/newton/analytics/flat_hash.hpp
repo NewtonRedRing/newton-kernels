@@ -99,22 +99,38 @@ std::size_t flat_hash_join_into(
     if (heads.empty() || next.size() < right.size())
         throw std::length_error("Insufficient caller-owned join scratch");
     constexpr auto missing = std::numeric_limits<std::size_t>::max();
-    std::fill(heads.begin(), heads.end(), missing);
-    for (std::size_t i = 0; i < right.size(); ++i) {
-        const auto bucket = static_cast<std::size_t>(FlatCountSum::mix(right[i]) % heads.size());
-        next[i] = heads[bucket];
-        heads[bucket] = i;
-    }
-    std::size_t count = 0;
-    for (std::size_t i = 0; i < left.size(); ++i) {
-        const auto bucket = static_cast<std::size_t>(FlatCountSum::mix(left[i]) % heads.size());
-        for (auto k = heads[bucket]; k != missing; k = next[k]) {
-            if (left[i] != right[k]) continue;
-            if (count == missing) throw std::overflow_error("Join match count overflow");
-            visitor(i, k);
-            ++count;
+    // Choose the bucket policy only once. Masking a 64-bit mixed hash is
+    // equivalent to modulo a power-of-two capacity, including on 32-bit.
+    // Arbitrary caller-provided capacities retain exact modulo semantics.
+    const auto run = [&](auto bucket_of) -> std::size_t {
+        std::fill(heads.begin(), heads.end(), missing);
+        for (std::size_t i = 0; i < right.size(); ++i) {
+            const auto bucket = bucket_of(right[i]);
+            next[i] = heads[bucket];
+            heads[bucket] = i;
         }
+        std::size_t count = 0;
+        for (std::size_t i = 0; i < left.size(); ++i) {
+            const auto bucket = bucket_of(left[i]);
+            for (auto k = heads[bucket]; k != missing; k = next[k]) {
+                if (left[i] != right[k]) continue;
+                if (count == missing)
+                    throw std::overflow_error("Join match count overflow");
+                visitor(i, k);
+                ++count;
+            }
+        }
+        return count;
+    };
+    if ((heads.size() & (heads.size() - 1)) == 0) {
+        const auto mask = heads.size() - 1;
+        return run([mask](std::uint64_t key) noexcept {
+            return static_cast<std::size_t>(FlatCountSum::mix(key) & mask);
+        });
     }
-    return count;
+    const auto capacity = heads.size();
+    return run([capacity](std::uint64_t key) noexcept {
+        return static_cast<std::size_t>(FlatCountSum::mix(key) % capacity);
+    });
 }
 } // namespace newton::analytics
