@@ -29,6 +29,12 @@ target_compile_features(newton_columnar_tests PRIVATE cxx_std_20)
 target_link_libraries(newton_columnar_tests PRIVATE newton_analytics newton_parsing)
 add_test(NAME newton_columnar_tests COMMAND newton_columnar_tests)
 
+# Audit edge-case regression tests for graph, executor, mapping and columnar.
+add_executable(newton_audit_edge_tests unit/test_audit_edges.cpp)
+target_compile_features(newton_audit_edge_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_audit_edge_tests PRIVATE newton_graph newton_parallel newton_memory newton_columnar)
+add_test(NAME newton_audit_edge_tests COMMAND newton_audit_edge_tests)
+
 # The allocation override remains isolated to this test process.
 add_executable(newton_radix_heap_fault_tests unit/test_radix_heap_faults.cpp)
 target_compile_features(newton_radix_heap_fault_tests PRIVATE cxx_std_20)

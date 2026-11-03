@@ -91,12 +91,17 @@ def measure(binary: Path, case: Case, repetitions: int, seed: int) -> dict:
         if type(result.get(key)) is not type(expected) or result[key] != expected:
             raise ValueError(f"{case.key}: invalid {key} in {binary}: "
                              f"{result.get(key)!r} != {expected!r}")
-    for key in ("checksum", "items", "input_bytes"):
-        if key not in result:
-            raise ValueError(f"{case.key}: missing output-verification field {key}")
+    checksum = result.get("checksum")
+    if (not isinstance(checksum, str) or not 1 <= len(checksum) <= 16 or
+            any(ch not in "0123456789abcdefABCDEF" for ch in checksum)):
+        raise ValueError(f"{case.key}: missing/invalid 64-bit hexadecimal checksum")
+    for key in ("items", "input_bytes"):
+        value = result.get(key)
+        if type(value) is not int or value < 0:
+            raise ValueError(f"{case.key}: missing/invalid {key}={value!r}")
     for key in ("median_ms", "minimum_ms", "maximum_ms"):
         value = result.get(key)
-        if not isinstance(value, (float, int)) or not math.isfinite(value) or value <= 0:
+        if type(value) not in (float, int) or not math.isfinite(value) or value <= 0:
             raise ValueError(f"{case.key}: invalid time {key}={value!r}")
     if not result["minimum_ms"] <= result["median_ms"] <= result["maximum_ms"]:
         raise ValueError(f"{case.key}: inconsistent timing statistics")
@@ -112,6 +117,12 @@ def decide(candidate: list[dict], reference: list[dict],
     """
     if not candidate or len(candidate) != len(reference):
         raise ValueError("Paired samples are required for every round")
+    for samples in (candidate, reference):
+        for sample in samples:
+            value = sample.get("median_ms")
+            if (type(value) not in (int, float) or
+                    not math.isfinite(value) or value <= 0):
+                raise ValueError("Missing, nonfinite or nonpositive timing sample")
     deltas = [c["median_ms"] / r["median_ms"] - 1.0
               for c, r in zip(candidate, reference)]
     median_delta = statistics.median(deltas)

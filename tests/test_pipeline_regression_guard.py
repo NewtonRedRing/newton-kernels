@@ -32,6 +32,13 @@ class PipelineRegressionPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             guard.verdict([], .03, 5)
 
+    def test_boolean_and_nonfinite_deltas_fail_closed(self):
+        for bad in (True, False, float("inf"), float("-inf"),
+                    float("nan"), "0.01"):
+            with self.subTest(bad=repr(bad)):
+                with self.assertRaises(ValueError):
+                    guard.verdict([0.0, bad, 0.0], .03, 2)
+
 
 if __name__ == "__main__":
     unittest.main()
