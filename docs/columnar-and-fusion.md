@@ -37,6 +37,17 @@ Only 32/64-bit integer and 32/64-bit floating primitive formats are currently
 mapped. Strings, nested arrays, dictionary arrays, IPC, schema export,
 ownership transfer, and automatic Arrow release are not implemented.
 
+## Fast numeric single-pass strategy
+
+`#include <newton/analytics/csv_numeric_fast.hpp>` exposes
+`parse_filter_group_cents_fast_into(csv, options, counts, sums)`. It scans
+and validates numeric CSV fields in one pass without caller-scratch
+field descriptors. For the constrained numeric CSV workload measured
+in November 2026 it is faster than both the owned parser and the first
+generic fused parser. See [same-host evidence and negative cases](fused-pipeline-evidence-2026-11-03.md).
+The new method remains specialized: do not use it to decode arbitrary
+text fields or assume performance wins on every input.
+
 ## Fused CSV to grouped aggregation
 
 `parse_filter_group_cents_into(csv, options, counts, sums, fields, scratch)`
