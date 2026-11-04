@@ -83,7 +83,28 @@ void test_simd() {
         }
     }
 
-    (void)newton::core::cpu_features();
+    const auto features = newton::core::cpu_features_cached();
+    const auto directly_detected = newton::core::cpu_features();
+    check(features.sse42 == directly_detected.sse42 &&
+          features.avx2 == directly_detected.avx2 &&
+          features.avx512f == directly_detected.avx512f &&
+          features.avx512bw == directly_detected.avx512bw,
+          "Cached CPU flags differ from default detection");
+    for (int repeat = 0; repeat < 256; ++repeat) {
+        const auto next = newton::core::cpu_features_cached();
+        check(features.sse42 == next.sse42 && features.avx2 == next.avx2 &&
+              features.avx512f == next.avx512f &&
+              features.avx512bw == next.avx512bw,
+              "CPU feature snapshot changed between calls");
+    }
+#if (defined(__x86_64__) || defined(__i386__)) && (defined(__GNUC__) || defined(__clang__))
+    __builtin_cpu_init();
+    check(features.sse42 == (__builtin_cpu_supports("sse4.2") != 0) &&
+          features.avx2 == (__builtin_cpu_supports("avx2") != 0) &&
+          features.avx512f == (__builtin_cpu_supports("avx512f") != 0) &&
+          features.avx512bw == (__builtin_cpu_supports("avx512bw") != 0),
+          "cached CPU feature snapshot differs from compiler CPU detection");
+#endif
 }
 void test_csv() {
     using namespace newton::parsing;

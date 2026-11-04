@@ -11,4 +11,9 @@ CpuFeatures cpu_features() noexcept {
 #endif
     return features;
 }
+// Explicitly cached variant; the established runtime query remains unchanged.
+CpuFeatures cpu_features_cached() noexcept {
+    static const CpuFeatures snapshot = cpu_features();
+    return snapshot;
+}
 } // namespace newton::core

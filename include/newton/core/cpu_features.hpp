@@ -8,4 +8,6 @@ struct CpuFeatures {
 };
 // Reports support available to the current process, not just CPU hardware.
 [[nodiscard]] CpuFeatures cpu_features() noexcept;
+// Opt-in process-wide cached snapshot for callers that can use stable CPU features.
+[[nodiscard]] CpuFeatures cpu_features_cached() noexcept;
 } // namespace newton::core
