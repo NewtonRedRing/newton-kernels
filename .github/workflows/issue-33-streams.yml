@@ -1,0 +1,93 @@
+name: 33 independent issue validation streams
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/issue-33-streams.yml'
+      - 'tools/issue_streams.py'
+      - 'docs/production-hardening-prep.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue-33-streams.yml'
+      - 'tools/issue_streams.py'
+      - 'docs/production-hardening-prep.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  validate-issue:
+    name: Issue #${{ matrix.issue }} independent audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 33
+      matrix:
+        issue:
+          - 33
+          - 34
+          - 35
+          - 36
+          - 37
+          - 38
+          - 39
+          - 40
+          - 41
+          - 42
+          - 43
+          - 44
+          - 45
+          - 46
+          - 47
+          - 48
+          - 49
+          - 50
+          - 51
+          - 52
+          - 53
+          - 54
+          - 55
+          - 56
+          - 57
+          - 58
+          - 59
+          - 60
+          - 61
+          - 62
+          - 63
+          - 64
+          - 82
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check out historical anchor for independent CSV root-cause stream
+        if: matrix.issue == 82
+        uses: actions/checkout@v4
+        with:
+          ref: a3ccc65021181561aec1c8fe284bdeb7c8e1234c
+          path: pinned-anchor
+          persist-credentials: false
+      - name: Validate exact 33-issue matrix
+        run: python3 tools/issue_streams.py --self-check
+      - name: Execute issue-specific checks and retain evidence
+        run: |
+          python3 tools/issue_streams.py \
+            --issue '${{ matrix.issue }}' \
+            --output 'reports/issue-${{ matrix.issue }}.json'
+      - name: Upload raw issue evidence even when checks fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-${{ matrix.issue }}-evidence
+          path: |
+            reports/issue-${{ matrix.issue }}.json
+            reports/csv-anchor-raw/**
+          if-no-files-found: warn
+          retention-days: 21
