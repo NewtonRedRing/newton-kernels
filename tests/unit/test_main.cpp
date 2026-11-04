@@ -83,7 +83,21 @@ void test_simd() {
         }
     }
 
-    (void)newton::core::cpu_features();
+    const auto snapshot = newton::core::cpu_features();
+    for (int i = 0; i < 1024; ++i) {
+        const auto next = newton::core::cpu_features();
+        check(next.sse42 == snapshot.sse42 && next.avx2 == snapshot.avx2 &&
+              next.avx512f == snapshot.avx512f && next.avx512bw == snapshot.avx512bw,
+              "CPU snapshot changed across repeated probes");
+    }
+#if (defined(__x86_64__) || defined(__i386__)) && (defined(__GNUC__) || defined(__clang__))
+    __builtin_cpu_init();
+    check(snapshot.sse42 == (__builtin_cpu_supports("sse4.2") != 0) &&
+          snapshot.avx2 == (__builtin_cpu_supports("avx2") != 0) &&
+          snapshot.avx512f == (__builtin_cpu_supports("avx512f") != 0) &&
+          snapshot.avx512bw == (__builtin_cpu_supports("avx512bw") != 0),
+          "CPU snapshot differs from process-usable compiler flags");
+#endif
 }
 void test_csv() {
     using namespace newton::parsing;
