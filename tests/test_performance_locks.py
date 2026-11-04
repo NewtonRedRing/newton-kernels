@@ -123,5 +123,50 @@ class PerformanceHighWaterTests(unittest.TestCase):
                     locks.measure_lock(opts, [pin])
 
 
+    def test_promotions_require_complete_passing_final_sha_and_four_faster_rounds(self):
+        cases = locks.guard.cases()
+        rows = [{"key": case.key, "status": "PASS",
+                 "comparisons": {"base": {
+                     "median_change_pct": -1.0,
+                     "round_changes_pct": [-1.0] * 5}}}
+                for case in cases]
+        rows[0]["comparisons"]["base"] = {
+            "median_change_pct": -6.0,
+            "round_changes_pct": [-6.0, -6.0, -6.0, -6.0, 2.0],
+        }
+        rows[1]["comparisons"]["base"] = {
+            "median_change_pct": -8.0,
+            "round_changes_pct": [-8.0, -8.0, -8.0, 2.0, 2.0],
+        }
+        report = {"revisions": {"candidate": SHA_B}, "case_count": 22,
+                  "failed_cases": [], "results": rows}
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            manifest = root / "locks.json"
+            source = root / "report.json"
+            output = root / "proposals.json"
+            write(manifest, [])
+            source.write_text(json.dumps(report), encoding="utf-8")
+            opts = SimpleNamespace(manifest=manifest, report=source,
+                                   candidate_sha=SHA_B, evidence=EVIDENCE,
+                                   out=output)
+            self.assertEqual(locks.propose(opts), 0)
+            proposed = json.loads(output.read_text(encoding="utf-8"))[
+                "proposed_locks"]
+            self.assertEqual(proposed, [record(cases[0].key, SHA_B)])
+            write(manifest, proposed)
+            self.assertEqual(locks.propose(opts), 0)
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8"))[
+                "proposed_locks"], [])
+            opts.candidate_sha = SHA_A
+            with self.assertRaises(ValueError):
+                locks.propose(opts)
+            opts.candidate_sha = SHA_B
+            report["failed_cases"] = [cases[-1].key]
+            source.write_text(json.dumps(report), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                locks.propose(opts)
+
+
 if __name__ == "__main__":
     unittest.main()
