@@ -19,3 +19,18 @@ target_link_libraries(newton_native_primitives_bench PRIVATE newton_analytics)
 add_executable(newton_pipeline_compare fused_pipeline_compare.cpp)
 target_compile_features(newton_pipeline_compare PRIVATE cxx_std_20)
 target_link_libraries(newton_pipeline_compare PRIVATE newton_parsing newton_analytics newton_memory)
+
+# Opt-in aggregate-only factorization versus existing exact fused pair enumeration.
+add_executable(newton_factorized_dense_join_bench factorized_dense_join_bench.cpp)
+target_compile_features(newton_factorized_dense_join_bench PRIVATE cxx_std_20)
+target_link_libraries(newton_factorized_dense_join_bench PRIVATE newton_analytics)
+
+# Exact aggregate-only competitors; measures build+aggregate, p50/p95/p99,
+# throughput, tracked allocator traffic and scratch footprint separately.
+add_executable(newton_factorized_competitors_bench factorized_competitors.cpp)
+target_compile_features(newton_factorized_competitors_bench PRIVATE cxx_std_20)
+target_link_libraries(newton_factorized_competitors_bench PRIVATE newton_analytics)
+# External DuckDB SQL parity fixture. Does not add DuckDB to the library.
+add_executable(newton_factorized_sql_fixture factorized_sql_fixture.cpp)
+target_compile_features(newton_factorized_sql_fixture PRIVATE cxx_std_20)
+target_link_libraries(newton_factorized_sql_fixture PRIVATE newton_analytics)
