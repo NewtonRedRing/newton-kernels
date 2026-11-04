@@ -19,3 +19,8 @@ target_link_libraries(newton_native_primitives_bench PRIVATE newton_analytics)
 add_executable(newton_pipeline_compare fused_pipeline_compare.cpp)
 target_compile_features(newton_pipeline_compare PRIVATE cxx_std_20)
 target_link_libraries(newton_pipeline_compare PRIVATE newton_parsing newton_analytics newton_memory)
+
+# Opt-in 0/1-weighted shortest path benchmark against reusable radix Dijkstra.
+add_executable(newton_zero_one_graph_bench zero_one_graph_bench.cpp)
+target_compile_features(newton_zero_one_graph_bench PRIVATE cxx_std_20)
+target_link_libraries(newton_zero_one_graph_bench PRIVATE newton_graph)
