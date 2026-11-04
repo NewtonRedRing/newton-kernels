@@ -112,6 +112,26 @@ void test_index() {
     check((ix.search_phrase("red blue") == std::vector<std::uint32_t>{0, 2}), "index phrase");
     check(ix.search_phrase("green red").empty(), "index no phrase");
     check(ix.search_all("missing").empty(), "index missing");
+    // The reserved token vector can grow beyond its 64-token cap without
+    // changing positional offsets, delimiters or document identity.
+    newton::index::InvertedIndex long_index;
+    std::string long_document;
+    for (int i = 0; i < 130; ++i) {
+        if (i) long_document += (i % 3 == 0 ? " ; " : ",");
+        long_document += "word" + std::to_string(i);
+    }
+    check(long_index.add_document(long_document) == 0, "long tokenized document ID");
+    check(long_index.search_all("WORD0 WORD129") ==
+          (std::vector<std::uint32_t>{0}), "long token list AND mismatch");
+    check(long_index.search_phrase("word126 word127 word128 word129") ==
+          (std::vector<std::uint32_t>{0}), "long token list phrase mismatch");
+    check(long_index.search_phrase("word129 word128").empty(),
+          "long token list accepted reverse phrase");
+    check(long_index.add_document("WORD129") == 1 &&
+          long_index.search_all("word129") ==
+          (std::vector<std::uint32_t>{0, 1}),
+          "token reserve changed posting IDs");
+
 }
 void test_graph() {
     using namespace newton::graph;
