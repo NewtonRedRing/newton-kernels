@@ -56,7 +56,7 @@ reference** therefore protects approved improvements after they are merged.
 - When a commit produces a repeatable improvement, the successful
   `main` regression-guard run emits
   `performance-evidence/high-water-proposals.json` as a **review-only**
-  artifact. Proposals require at least a 5% paired-median gain against previous
+  artifact. Proposals require at least a 3% paired-median gain against previous
   `main` with at least four of five faster rounds. They are not promoted if
   the complete guard, the six CSV pipeline cases, or any required CI job fail.
 - After reviewing the exact final merged SHA, correctness, original benchmark
