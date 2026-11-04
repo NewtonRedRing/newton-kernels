@@ -1,0 +1,53 @@
+name: CSV fast pipeline A/A research
+on:
+  pull_request:
+    paths: ['.github/workflows/csv-fast-pipeline-aa.yml']
+permissions:
+  contents: read
+jobs:
+  fast-pipeline-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: base
+          ref: ${{ github.event.pull_request.base.sha }}
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+          ref: b9510b7d66184da043a92e9fc0487740d861b09c
+      - name: Build both at identical flags
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          for name in base candidate; do
+            cmake -S "$name" -B "build-$name" -DCMAKE_BUILD_TYPE=Release \
+              -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+              -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
+              -DNEWTON_COMP_BENCH_WITH_BOOST=OFF -DNEWTON_COMP_BENCH_WITH_VINCE=OFF
+            cmake --build "build-$name" --target newton_pipeline_compare --parallel 2
+            sha256sum "build-$name/benchmarks/newton_pipeline_compare" >> evidence/binaries.txt
+            objdump -drwC "build-$name/benchmarks/CMakeFiles/newton_pipeline_compare.dir/fused_pipeline_compare.cpp.o" > "evidence/$name-disassembly.txt"
+          done
+      - name: Same executable A/A then candidate/main A/B (15 ABBA rounds)
+        shell: bash
+        run: |
+          set +e
+          python3 base/tools/pipeline_regression_guard.py \
+            --base build-base/benchmarks/newton_pipeline_compare \
+            --candidate build-base/benchmarks/newton_pipeline_compare \
+            --out evidence/aa --rounds 15 --max-regression-pct 3 --min-slow-rounds 10 > evidence/aa-log.txt 2>&1
+          echo "$?" > evidence/aa-exit-code.txt
+          python3 base/tools/pipeline_regression_guard.py \
+            --base build-base/benchmarks/newton_pipeline_compare \
+            --candidate build-candidate/benchmarks/newton_pipeline_compare \
+            --out evidence/ab --rounds 15 --max-regression-pct 3 --min-slow-rounds 10 > evidence/ab-log.txt 2>&1
+          echo "$?" > evidence/ab-exit-code.txt
+          cat evidence/aa-log.txt evidence/ab-log.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: csv-fast-aa-${{ github.run_id }}
+          path: evidence/
