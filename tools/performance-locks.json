@@ -1,4 +1,15 @@
 {
   "schema_version": 1,
-  "locks": []
+  "locks": [
+    {
+      "case": "csv:10000:1",
+      "sha": "fb811efc6bc9ad72bcdff01d35548416a2c7663c",
+      "evidence": "https://github.com/NewtonRedRing/newton-kernels/actions/runs/41811077545"
+    },
+    {
+      "case": "csv:100000:1",
+      "sha": "fb811efc6bc9ad72bcdff01d35548416a2c7663c",
+      "evidence": "https://github.com/NewtonRedRing/newton-kernels/actions/runs/41811077545"
+    }
+  ]
 }
