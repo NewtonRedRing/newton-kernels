@@ -1,5 +1,7 @@
 # 20-track optimization audit — resolution register (2026-11-03)
 
+> **Historical snapshot:** This register records the original November 3 proposals. Refer to the linked GitHub issues and merged PRs for live status; several older PR descriptions may be superseded.
+
 Base repository: `main` at `7721f53da8ed87e6e4215c26f31b1bd5c9fa22f6`.
 
 The 20 original rows mix **confirmed correctness risks**, **performance

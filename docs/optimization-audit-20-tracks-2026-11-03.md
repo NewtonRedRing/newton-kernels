@@ -1,19 +1,6 @@
 # Twenty-track algorithm optimization audit — November 3, 2026
 
-> **Resolution status — updated November 3, 2026.** This document is a research
-> audit containing hypotheses, correctness risks, and missing measurements,
-> **not a list of 20 confirmed defects**. The [track-by-track resolution
-> register](optimization-audit-20-tracks-resolution-register.md) gives current
-> owner actions and acceptance evidence. The PR #25 transaction fix for
-> `SelectiveTermIndex` is **proposed, not merged**, until cross-platform CI and
-> the original 22+6 performance guard pass. The older #19–#21 and #23–#24
-> proposals are still blocked by regression-guard results. Only the
-> caller-owned flat hash specialization from #22 has been merged.
->
-> **Required standard for every track:** preserve exact outputs, error behavior,
-> portable compilation, and no confirmed performance regression. For a
-> performance hypothesis, do not mark it fixed without same-input A/B results.
-> A passing check on a different commit is not evidence for this change.
+> **Track status:** This audit records hypotheses and validation requirements, not confirmed defects. See [resolution register](optimization-audit-20-tracks-resolution-register.md) and the GitHub audit issues #33–#52 for current verification. Proposed fixes remain gated by full CI and unmodified 22+6 performance checks.
 
 Baseline `main`: `b33078d3adce6f8979b9b22fbdc75a3a2f040fd3`. Each track below was source-inspected concurrently through the connected GitHub repository. This is an **initial source-level audit**, not a mathematical proof that every line has been verified. Changes must be independently tested, benchmarked and reviewed before merging.
 

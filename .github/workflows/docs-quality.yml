@@ -1,0 +1,34 @@
+name: Documentation quality
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'showcase/**'
+      - 'tools/check_docs.py'
+      - 'tools/build_showcase.py'
+      - '.github/workflows/docs-quality.yml'
+      - '.github/workflows/showcase-pages.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'showcase/**'
+      - 'tools/check_docs.py'
+      - 'tools/build_showcase.py'
+      - '.github/workflows/docs-quality.yml'
+      - '.github/workflows/showcase-pages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    name: docs-and-pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Markdown and static Pages links
+        run: python3 tools/check_docs.py
+      - name: Validate published evidence checksum and copy integrity
+        run: python3 tools/build_showcase.py --check
