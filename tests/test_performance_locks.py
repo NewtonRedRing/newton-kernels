@@ -131,8 +131,8 @@ class PerformanceHighWaterTests(unittest.TestCase):
                      "round_changes_pct": [-1.0] * 5}}}
                 for case in cases]
         rows[0]["comparisons"]["base"] = {
-            "median_change_pct": -6.0,
-            "round_changes_pct": [-6.0, -6.0, -6.0, -6.0, 2.0],
+            "median_change_pct": -3.5,
+            "round_changes_pct": [-3.5, -3.5, -3.5, -3.5, 2.0],
         }
         rows[1]["comparisons"]["base"] = {
             "median_change_pct": -8.0,
