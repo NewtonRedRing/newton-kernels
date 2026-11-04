@@ -26,10 +26,17 @@ public:
         if (this != &rhs) { release(); data_ = std::exchange(rhs.data_, nullptr); size_ = std::exchange(rhs.size_, 0); }
         return *this;
     }
-    [[nodiscard]] T* data() noexcept { return data_; }
-    [[nodiscard]] const T* data() const noexcept { return data_; }
+    // Communicate the allocation's guaranteed alignment to optimizer
+    // vectorization and load/store scheduling. Null empty/moved-from buffers
+    // do not enter std::assume_aligned.
+    [[nodiscard]] T* data() noexcept {
+        return data_ ? std::assume_aligned<Alignment>(data_) : nullptr;
+    }
+    [[nodiscard]] const T* data() const noexcept {
+        return data_ ? std::assume_aligned<Alignment>(data_) : nullptr;
+    }
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
-    [[nodiscard]] std::span<T> span() noexcept { return {data_, size_}; }
+    [[nodiscard]] std::span<T> span() noexcept { return {data(), size_}; }
 private:
     void release() noexcept { if (data_) ::operator delete(data_, std::align_val_t{Alignment}); }
     T* data_ = nullptr;

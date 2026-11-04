@@ -212,6 +212,13 @@ void test_memory() {
     newton::memory::AlignedBuffer<int, 64> empty(0);
     check(empty.data() == nullptr && empty.size() == 0 && empty.span().empty(),
           "zero-sized aligned buffer must not allocate");
+    const auto& const_buf = buf;
+    check(reinterpret_cast<std::uintptr_t>(const_buf.data()) % 64 == 0 &&
+          const_buf.data() == buf.data(), "const aligned pointer changed address");
+    newton::memory::AlignedBuffer<std::uint64_t, 256> wide(4096);
+    check(reinterpret_cast<std::uintptr_t>(wide.data()) % 256 == 0 &&
+          wide.span().data() == wide.data(), "wider alignment hint corrupted pointer");
+
     newton::memory::AlignedBuffer<int, 64> moving(9);
     auto* original = moving.data();
     newton::memory::AlignedBuffer<int, 64> destination(2);
