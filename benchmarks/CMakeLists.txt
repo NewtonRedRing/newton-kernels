@@ -30,3 +30,7 @@ target_link_libraries(newton_factorized_dense_join_bench PRIVATE newton_analytic
 add_executable(newton_factorized_competitors_bench factorized_competitors.cpp)
 target_compile_features(newton_factorized_competitors_bench PRIVATE cxx_std_20)
 target_link_libraries(newton_factorized_competitors_bench PRIVATE newton_analytics)
+# External DuckDB SQL parity fixture. Does not add DuckDB to the library.
+add_executable(newton_factorized_sql_fixture factorized_sql_fixture.cpp)
+target_compile_features(newton_factorized_sql_fixture PRIVATE cxx_std_20)
+target_link_libraries(newton_factorized_sql_fixture PRIVATE newton_analytics)
