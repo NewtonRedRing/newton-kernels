@@ -341,6 +341,51 @@ void fused_join_test() {
             dup_heads, dup_links, counts, sums);
     });
 
+
+    // Opt-in transactional variant retains original caller outputs even if
+    // numeric overflow occurs midway through duplicate-preserving joins.
+    std::array<std::uint64_t, 2> stable_counts{77, 88}, stable_sums{99, 111};
+    std::array<std::uint64_t, 2> staged_counts{}, staged_sums{};
+    const auto safe_pairs = newton::analytics::fused_join_group_sum_transactional_into(
+        left, groups, values, right, heads, links,
+        stable_counts, stable_sums, staged_counts, staged_sums);
+    check(safe_pairs == 5 && stable_counts == std::array<std::uint64_t, 2>{3, 2} &&
+          stable_sums == std::array<std::uint64_t, 2>{60, 60},
+          "Transactional fused join disagrees with original results");
+
+    stable_counts = {77, 88};
+    stable_sums = {99, 111};
+    throws<std::overflow_error>([&] {
+        (void)newton::analytics::fused_join_group_sum_transactional_into(
+            duplicate_keys, zero_groups, high_values, right_match,
+            dup_heads, dup_links, stable_counts, stable_sums,
+            staged_counts, staged_sums);
+    });
+    check(stable_counts == std::array<std::uint64_t, 2>{77, 88} &&
+          stable_sums == std::array<std::uint64_t, 2>{99, 111},
+          "Transactional fused join changed outputs on overflow");
+
+    throws<std::out_of_range>([&] {
+        (void)newton::analytics::fused_join_group_sum_transactional_into(
+            left, invalid_group, values, right, heads, links,
+            stable_counts, stable_sums, staged_counts, staged_sums);
+    });
+    check(stable_counts[0] == 77 && stable_sums[1] == 111,
+          "Transactional fused join changed output on invalid group");
+    throws<std::invalid_argument>([&] {
+        (void)newton::analytics::fused_join_group_sum_transactional_into(
+            left, groups, values, right, heads, links,
+            stable_counts, stable_sums, staged_counts,
+            std::span<std::uint64_t>(staged_sums).first(1));
+    });
+    throws<std::invalid_argument>([&] {
+        (void)newton::analytics::fused_join_group_sum_transactional_into(
+            left, groups, values, right, heads, links,
+            stable_counts, stable_sums, stable_counts, staged_sums);
+    });
+    check(stable_counts[0] == 77 && stable_sums[1] == 111,
+          "Transactional fused join changed output on short/aliased scratch");
+
     newton::core::PhaseSample sample{"join"};
     { newton::core::ScopedPhase timing(sample); }
     check(sample.elapsed_ns < std::numeric_limits<std::uint64_t>::max(),
