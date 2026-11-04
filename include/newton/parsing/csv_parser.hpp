@@ -14,8 +14,15 @@ using CsvRow = std::vector<std::string>;
 // Single strict CSV implementation shared by erased and inline callbacks.
 // Calling a non-erased callback directly lets the optimizer inline the hot
 // consumer (e.g. hashing or aggregation) without std::function dispatch.
+// Keep the specialized parser out of the caller to limit unrelated hot-code
+// layout changes while retaining compile-time callback specialization.
 namespace detail {
 template<class Callback>
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#elif defined(_MSC_VER)
+__declspec(noinline)
+#endif
 std::size_t parse_csv_impl(std::string_view input, Callback& on_row) {
     if (input.empty()) return 0;
     CsvRow row;
