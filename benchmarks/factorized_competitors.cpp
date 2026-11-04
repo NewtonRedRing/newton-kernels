@@ -73,11 +73,11 @@ void add(Result& out, std::size_t i, std::size_t n, const Fixture& f) {
     out.sums[group] += val*n;
 }
 Result dense(const Fixture& f, std::size_t& scratch_bytes) {
-    std::vector<std::size_t> frequencies(f.width);
+    std::vector<std::size_t,TrackingAllocator<std::size_t>> frequencies(f.width);
     scratch_bytes = frequencies.capacity()*sizeof(std::size_t);
     Result out;
     out.pairs = newton::analytics::factorized_dense_join_group_sum_into(
-        f.left, f.groups, f.values, f.right, 0, frequencies,
+        f.left, f.groups, f.values, f.right, 0, std::span<std::size_t>(frequencies.data(),frequencies.size()),
         out.counts, out.sums);
     return out;
 }
@@ -100,7 +100,7 @@ Result hash(const Fixture& f, std::size_t& scratch_bytes) {
     return out;
 }
 Result sorted(const Fixture& f, std::size_t& scratch_bytes) {
-    auto keys = f.right;
+    std::vector<std::uint64_t,TrackingAllocator<std::uint64_t>> keys(f.right.begin(), f.right.end());
     std::sort(keys.begin(),keys.end());
     scratch_bytes = keys.capacity()*sizeof(std::uint64_t);
     Result out;
@@ -123,7 +123,7 @@ struct Measurement {
 };
 std::uint64_t digest(const Result& result) {
     std::uint64_t hash = 0xcbf29ce484222325ULL;
-    const auto mix=[&](std::uint64_t x) mutable {hash^=x;hash*=0x100000001b3ULL;};
+    const auto mix=[&](std::uint64_t x) {hash^=x;hash*=0x100000001b3ULL;};
     mix(result.pairs);
     for (const auto x : result.counts) mix(x);
     for (const auto x : result.sums) mix(x);
@@ -178,9 +178,8 @@ int main(int argc, char** argv) {
             // Three rotations, then reverse rotations; less order bias than
             // measuring a full set of one strategy followed by another.
             for (int i=0;i<repetitions;++i) {
-                const std::array<int,3> order = i%2 ?
-                    std::array<int,3>{2-(i%3),1-(i%3)+((i%3)==2?3:0),0} :
-                    std::array<int,3>{i%3,(i+1)%3,(i+2)%3};
+                const std::array<int,3> order = {
+                    i%3, (i+1)%3, (i+2)%3};
                 // Explicitly normalize the reverse cycle for all residues.
                 for (int k=0;k<3;++k) {
                     const int variant = i%2 ? (i%3+3-k)%3 : order[k];
