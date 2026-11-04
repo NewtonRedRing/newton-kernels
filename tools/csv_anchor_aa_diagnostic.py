@@ -50,18 +50,23 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--current", type=Path, required=True)
     p.add_argument("--anchor", type=Path, required=True)
+    p.add_argument("--candidate", type=Path, help="Optional candidate built from PR head")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--base-sha", required=True)
     p.add_argument("--rounds", type=int, default=12)
     args = p.parse_args()
-    if args.rounds < 6 or args.rounds % 6:
-        p.error("--rounds must be a positive multiple of six, at least six")
+    labels = 4 if args.candidate is not None else 3
+    period = 24 if labels == 4 else 6
+    if args.rounds < period or args.rounds % period:
+        p.error(f"--rounds must be a positive multiple of {period}")
     args.out.mkdir(parents=True, exist_ok=True)
     try:
         # SAME executable invoked twice under two labels. This is a true A/A
         # control, not two differently compiled but source-identical builds.
         binaries = {"main_a": args.current, "main_b": args.current,
                     "anchor": args.anchor}
+        if args.candidate is not None:
+            binaries["candidate"] = args.candidate
         report = {
             "note": "Diagnostic-only A/A and anchor A/B. Never a CI merge gate.",
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -100,10 +105,30 @@ def main() -> int:
                 "anchor_round_deltas_pct": [100*x for x in anchor],
                 "samples": samples,
             }
+            if args.candidate is not None:
+                candidate_vs_main = [
+                    p["median_ms"]/m["median_ms"] - 1.0
+                    for m,p in zip(samples["main_a"], samples["candidate"])
+                ]
+                candidate_vs_anchor = [
+                    p["median_ms"]/a["median_ms"] - 1.0
+                    for a,p in zip(samples["anchor"], samples["candidate"])
+                ]
+                record.update({
+                    "candidate_vs_main_median_pct": 100*statistics.median(candidate_vs_main),
+                    "candidate_vs_anchor_median_pct": 100*statistics.median(candidate_vs_anchor),
+                    "candidate_vs_main_round_deltas_pct": [100*x for x in candidate_vs_main],
+                    "candidate_vs_anchor_round_deltas_pct": [100*x for x in candidate_vs_anchor],
+                })
             report["results"].append(record)
+            candidate_msg = (
+                f" candidate/main={record['candidate_vs_main_median_pct']:+.3f}%"
+                f" candidate/anchor={record['candidate_vs_anchor_median_pct']:+.3f}%"
+                if args.candidate is not None else ""
+            )
             print(f"csv:{size}: main/main A/A={record['aa_main_b_vs_main_a_median_pct']:+.3f}% "
-                  f"anchor/main={record['anchor_vs_main_a_median_pct']:+.3f}%",
-                  flush=True)
+                  f"anchor/main={record['anchor_vs_main_a_median_pct']:+.3f}%"
+                  + candidate_msg, flush=True)
         (args.out/"csv-aa-diagnostic.json").write_text(
             json.dumps(report, indent=2)+"\n", encoding="utf-8")
         return 0
