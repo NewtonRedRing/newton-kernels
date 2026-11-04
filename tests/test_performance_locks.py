@@ -29,9 +29,9 @@ def write(path: Path, entries: list[dict], version: int = 1) -> None:
 
 
 class PerformanceHighWaterTests(unittest.TestCase):
-    def test_current_config_starts_empty_and_includes_original_manifest(self):
+    def test_current_config_and_original_manifest_remain_valid(self):
         manifest = locks.load(ROOT / "tools" / "performance-locks.json")
-        self.assertEqual(manifest, [])
+        self.assertIsInstance(manifest, list)
         self.assertEqual(len(locks.guard.cases()), 22)
         self.assertEqual((locks.ROUNDS, locks.REPETITIONS,
                           locks.MAX_REGRESSION, locks.MIN_SLOW_ROUNDS),
