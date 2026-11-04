@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'benchmarks/factorized_competitors.cpp'
+      - 'benchmarks/factorized_sql_fixture.cpp'
+      - 'tools/benchmark_factorized_vs_duckdb.py'
       - 'benchmarks/CMakeLists.txt'
       - '.github/workflows/aggregate-competitors.yml'
   workflow_dispatch:
@@ -54,5 +56,50 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aggregate-competitor-${{ matrix.compiler }}-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+  external-duckdb:
+    name: DuckDB 2.0 aggregate-equivalent comparison (research)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned external competitor in isolated virtualenv
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --disable-pip-version-check duckdb==2.0.0
+          .venv/bin/python -c 'import duckdb; print("DuckDB", duckdb.__version__)'
+      - name: Build Newton identical-fixture aggregate endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-external-research -DCMAKE_BUILD_TYPE=Release \
+            -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+            -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=OFF
+          cmake --build build-external-research --target newton_factorized_sql_fixture --parallel 2
+      - name: Run exact SQL and C++ comparisons with varied cardinality
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          uname -a | tee evidence/provenance.txt
+          c++ --version | head -n 1 | tee -a evidence/provenance.txt
+          .venv/bin/python --version | tee -a evidence/provenance.txt
+          .venv/bin/python -m pip freeze | tee -a evidence/provenance.txt
+          cpu=$(python3 -c 'import os; print(min(os.sched_getaffinity(0)))')
+          /usr/bin/time -v taskset -c "$cpu" .venv/bin/python \
+            tools/benchmark_factorized_vs_duckdb.py \
+            --binary build-external-research/benchmarks/newton_factorized_sql_fixture \
+            --out evidence --rounds 39 > evidence/stdout.log 2> evidence/process-time.txt
+          cat evidence/stdout.log
+          cat evidence/duckdb-vs-newton.csv
+          cat evidence/process-time.txt
+      - name: Upload unfiltered DuckDB plans and exact-aggregate timing samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duckdb-aggregate-${{ github.run_id }}
           path: evidence/
           if-no-files-found: warn
