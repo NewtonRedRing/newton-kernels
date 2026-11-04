@@ -41,3 +41,77 @@ These are exploratory medians without interval estimates, dedicated bare-metal r
 - For independent competitive evaluation, compare against a capable factorized SQL aggregate (e.g. DuckDB), not just an enumerating hash join, on the same exact query semantics, data and hardware.
 - Test all-left-unmatched, extremely heavy skew, zero-valued rows, overflow, cold vs warm cache, allocations, scratch RSS, cycles, throughput, p95/p99 and different compilers.
 - Rerun all existing 22 kernel and six CSV performance checks on the **final PR head**. Preserve the current mandatory 3% guard and high-water locks.
+
+## New exact aggregate-only competitive screening (2026-11-04)
+
+A **different** comparison now avoids the pair-enumeration-vs-factorization
+mismatch. The [GCC/Clang and DuckDB benchmark job](https://github.com/NewtonRedRing/newton-kernels/actions/runs/41817486575)
+ran successfully on GitHub Actions. Raw CSV/JSON, exact checksums, p50/p95/p99
+samples, DuckDB SQL plans and process-wide memory evidence are uploaded as
+workflow artifacts.
+
+### Specialized C++ versus two independently implemented factorized alternatives
+
+Every implementation computes the same duplicate-preserving grouped count/sum
+from 32K left and 16K right rows. Each run includes right-side index
+construction and aggregation, excludes fixture generation, and uses 63
+interleaved repetitions per input. The hashed competitor is an
+explicitly reserved `std::unordered_map<key,count>` frequency table.
+The third path sorts right keys and uses `equal_range`, also without
+enumerating pair output. These are independent algorithmic alternatives, not
+different implementations of the same cache layout.
+
+| Key width | GCC dense p50 ms | GCC reserved hash p50 ms | Ratio hash/dense | Dense scratch | Hash allocation bytes |
+|---:|---:|---:|---:|---:|---:|
+| 64 | .048012 | .084066 | 1.75× | 512 B | 2,072 B |
+| 256 | .048152 | .084597 | 1.76× | 2 KiB | 8,200 B |
+| 4,096 | .055773 | .179258 | 3.21× | 32 KiB | 131,752 B |
+| 65,536 | .100770 | .815609 | 8.09× | 512 KiB | 473,336 B |
+| 262,144 | .087972 | .867287 | 9.86× | 2 MiB | 504,656 B |
+| 1,048,576 | .174071 | .892725 | 5.13× | 8 MiB | 512,288 B |
+
+Clang runs also favor the dense algorithm on these cases but ratios are
+compiler-dependent. The sorted alternative was measured and is retained as
+a potential sparse/immutable-input strategy, not omitted because it lost.
+Tracked allocations use a counting allocator for these benchmark strategies;
+whole-process peak RSS includes all fixtures and runtime.
+
+The 1,048,576-key case demonstrates the *memory* disadvantage of dense
+histograms despite its median CPU-time win. Adaptive dispatch and a scratch
+budget are necessary to avoid overclaiming wins in every resource dimension.
+
+### External DuckDB 2.0.0 SQL on the exact same generated rows
+
+The DuckDB job built the same deterministic left/right records from integer
+formulas and checked exact group counts/sums across four strategies:
+- Newton's C++ bounded-key histogram aggregate;
+- DuckDB 2.0.0 explicit factorized SQL with `GROUP BY` on the right keys;
+- DuckDB 2.0.0 normal `JOIN` followed by grouped aggregation;
+- DuckDB explicit factorization using four threads.
+
+It uses 39 randomized process-level experimental blocks. Input preparation
+is excluded from timing in all four paths. A single-core affinity is used.
+
+| Key width | Newton p50 | DuckDB factorized SQL 1 thread p50 | Ratio |
+|---:|---:|---:|---:|
+| 64 | 0.089 ms | 2.711 ms | 30.5× |
+| 4,096 | 0.089 ms | 3.789 ms | 42.6× |
+| 262,144 | 0.166 ms | 3.842 ms | 23.1× |
+
+**Not general-purpose product superiority:** Newton is a narrowly specialized
+C++ function. DuckDB performs SQL planning/execution, group-materialization and
+Python API invocation, so the invocations and features are unequal. This is a
+real exact-output workload comparison but not evidence of universal speedup
+against a database engine. The resource measurements are whole-process, not
+library-attributed. Report all slower cases from the artifacts, not just
+these representative rows.
+
+### Protected guard status
+
+[Performance regression guard run 41817486407](https://github.com/NewtonRedRing/newton-kernels/actions/runs/41817486407)
+FAILED the two historical CSV cases: candidate vs previous main was -0.69%
+and +0.03%, but relative to the old pinned anchor was +8.27% and +8.87%.
+All cross-platform CI and optional competitor jobs passed, but **PR #81 must
+remain draft/unmerged**. Do not weaken the guard or waive these unrelated
+failures. [Issue #82](https://github.com/NewtonRedRing/newton-kernels/issues/82)
+tracks exact A/A and binary-layout investigation.
