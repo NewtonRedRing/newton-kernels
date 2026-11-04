@@ -26,6 +26,12 @@ or its [GitHub Pages build](https://newtonredring.github.io/newton-kernels/docs/
 - [Five-module benchmarks](five-module-benchmarks.md) — separate-VM evidence.
 - [Fused pipeline evidence](fused-pipeline-evidence-2026-11-03.md) — date-scoped experiment.
 
+## Issue resolution and evidence
+
+- [2026-11-04 open-issue resolution register](open-issue-resolution-2026-11-04.md)
+  — all 33 open GitHub issues, verified progress, blockers and objective
+  criteria required before closure. The GitHub issues remain the live tracker.
+
 ## Engineering history and audits (retain for provenance)
 
 These are dated investigations, point-in-time experiment notes, or proposals.
