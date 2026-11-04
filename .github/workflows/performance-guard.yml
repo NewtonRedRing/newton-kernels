@@ -35,6 +35,7 @@ jobs:
           path: base
           ref: ${{ env.BASE_SHA }}
           persist-credentials: false
+          fetch-depth: 0
       - name: Check out published 22-case evidence revision
         uses: actions/checkout@v4
         with:
@@ -45,6 +46,26 @@ jobs:
         run: python3 -m unittest discover -s candidate/tests -p 'test_performance_guard.py' -v
       - name: Verify CSV pipeline regression policy tests
         run: python3 -m unittest discover -s candidate/tests -p 'test_pipeline_regression_guard.py' -v
+      - name: Verify append-only high-water lock policy tests
+        run: python3 -m unittest discover -s candidate/tests -p 'test_performance_locks.py' -v
+      - name: Validate approved high-water revisions and check out pinned source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 candidate/tools/performance_locks.py validate \
+            --base base/tools/performance-locks.json \
+            --candidate candidate/tools/performance-locks.json
+          mkdir -p locked-src
+          while read -r sha; do
+            [[ -n "$sha" ]] || continue
+            if ! git -C base merge-base --is-ancestor "$sha" HEAD; then
+              echo "LOCK POLICY ERROR: $sha is not a merged ancestor of base" >&2
+              exit 1
+            fi
+            git -C candidate fetch --no-tags --depth=1 origin "$sha"
+            git -C candidate worktree add --detach "$GITHUB_WORKSPACE/locked-src/$sha" "$sha"
+          done < <(python3 candidate/tools/performance_locks.py refs \
+                    --manifest candidate/tools/performance-locks.json)
       - name: Compile all three revisions with identical flags and toolchain
         shell: bash
         run: |
@@ -62,6 +83,20 @@ jobs:
                 --target newton_compare newton_compare_extended newton_pipeline_compare --parallel 2
             fi
           done
+      - name: Compile every pinned high-water source with the exact benchmark flags
+        shell: bash
+        run: |
+          set -euo pipefail
+          while read -r sha; do
+            [[ -n "$sha" ]] || continue
+            cmake -S "locked-src/$sha" -B "build-locked/$sha" -DCMAKE_BUILD_TYPE=Release \
+              -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+              -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
+              -DNEWTON_COMP_BENCH_WITH_BOOST=OFF -DNEWTON_COMP_BENCH_WITH_VINCE=OFF
+            cmake --build "build-locked/$sha" \
+              --target newton_compare newton_compare_extended --parallel 2
+          done < <(python3 candidate/tools/performance_locks.py refs \
+                    --manifest candidate/tools/performance-locks.json)
       - name: Detect identical protected source code versus main
         shell: bash
         run: |
@@ -98,6 +133,30 @@ jobs:
             --out performance-evidence \
             --protected-code-identical "$PROTECTED_CODE_IDENTICAL" \
             --rounds 7 --max-regression-pct 3 --min-slow-rounds 5
+      - name: Check every approved high-water mark using current same-host samples
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 candidate/tools/performance_locks.py run \
+            --manifest candidate/tools/performance-locks.json \
+            --build-root build-locked \
+            --candidate-classic build-candidate/benchmarks/competitors/newton_compare \
+            --candidate-extended build-candidate/benchmarks/competitors/newton_compare_extended \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --protected-code-identical "$PROTECTED_CODE_IDENTICAL" \
+            --out performance-evidence
+      - name: Suggest review-only high-water promotions after passing main checks
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 candidate/tools/performance_locks.py propose \
+            --manifest candidate/tools/performance-locks.json \
+            --report performance-evidence/results.json \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --evidence "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --out performance-evidence/high-water-proposals.json
       - name: Upload unfiltered samples and regression decisions
         if: always()
         uses: actions/upload-artifact@v4

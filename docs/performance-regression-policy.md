@@ -40,6 +40,72 @@ retest borderline cases on dedicated/pinned hardware, including p99, memory,
 and workloads newly affected by changes. No speed claim should be published
 without representative end-to-end evidence.
 
+## Preserve verified gains: immutable high-water locks
+
+The ordinary guard compares each candidate against previous `main` and the
+published November 2 source anchor. Those references remain mandatory, but
+neither alone prevents many individually small regressions from gradually
+eroding an earlier peak. An additional **append-only, per-fixture high-water
+reference** therefore protects approved improvements after they are merged.
+
+- `tools/performance-locks.json` starts empty. It contains **no speculative
+  PR branches, external-library results, unmerged revisions, or raw timing
+  claims**. Each future entry names an original protected case key, a complete
+  immutable 40-hex Git commit SHA from the *merged `main` history*, and a
+  GitHub Actions run containing its successful measurement evidence.
+- When a commit produces a repeatable improvement, the successful
+  `main` regression-guard run emits
+  `performance-evidence/high-water-proposals.json` as a **review-only**
+  artifact. Proposals require at least a 3% paired-median gain against previous
+  `main` with at least four of five faster rounds. They are not promoted if
+  the complete guard, the six CSV pipeline cases, or any required CI job fail.
+- After reviewing the exact final merged SHA, correctness, original benchmark
+  results, cross-platform tests and independent performance evidence, append
+  approved entries to `tools/performance-locks.json` in a **separate policy
+  pull request**. Existing entries must remain byte-for-byte unchanged and in
+  their original order. An improved successor for a case is appended, never
+  substituted for its previous high-water mark.
+- On every later PR and `main` push, the workflow verifies that the pinned
+  source SHA is an ancestor of its base revision, checks it out, compiles the
+  benchmark with identical flags, and measures **the specified case only**
+  alongside the candidate on the same runner. It compares output checksums,
+  item counts and input sizes before evaluating paired timings.
+- Each lock uses the **unchanged** 3% maximum slowdown and at least four slow
+  rounds out of five; smaller slowdowns remain warnings. The original 22
+  comparisons, the published anchor and six CSV pipeline checks are
+  **additional requirements** and are never replaced.
+- Historical absolute milliseconds are not compared across machines.
+  Raw locked-case samples, the chosen SHA and the decision are uploaded in
+  `locked-performance-results.json` and `locked-performance-REPORT.md`.
+  The same shared-runner noise limitations apply. A 3% statistical tolerance
+  does not guarantee literally zero loss, so review warnings and use dedicated
+  hardware to confirm narrow gains.
+
+Example of a **future** approved entry (replace all placeholder fields with a
+real merged winning commit and matching successful CI run):
+
+```json
+{
+  "case": "analytics_join:3000:512",
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "evidence": "https://github.com/NewtonRedRing/newton-kernels/actions/runs/123456789"
+}
+```
+
+Use `python3 tools/performance_locks.py validate --base
+path/to/previous/performance-locks.json --candidate
+tools/performance-locks.json` to review the append-only manifest. During
+initial adoption a missing base manifest is interpreted as an empty set.
+The workflow additionally rejects locks for commits not yet integrated into
+the PR's `main` base. Do not add pin entries to the manifest before a real
+verified improvement is available.
+
+**Enforcement still depends on repository branch controls.** If direct pushes
+and bypasses are allowed, GitHub cannot guarantee that a future commit runs
+this check at all. Restore a ruleset requiring the `regression-guard` job,
+cross-platform CI and review of changes to the manifest, workflow, fixtures
+and guard scripts to make this policy genuinely non-bypassable.
+
 ## Make this check genuinely required
 
 At the moment this workflow was introduced, GitHub reported `main` as
