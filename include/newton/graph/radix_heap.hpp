@@ -43,10 +43,10 @@ public:
                     ++committed;
                 }
             } catch (...) {
-                for (std::size_t i = 0; i < committed; ++i)
-                    buckets_[bucket(entries[i].first)].pop_back();
-                last_ = old_last;
-                buckets_[b] = std::move(entries);
+                // Keep correctness-critical rollback in a separate unlikely
+                // routine. This also isolates EH unwind code from the hot
+                // shortest-path instruction layout on supported compilers.
+                rollback_rebucket(b, old_last, entries, committed);
                 throw;
             }
         }
@@ -56,6 +56,22 @@ public:
         return entry;
     }
 private:
+#if defined(__GNUC__) || defined(__clang__)
+    __attribute__((cold, noinline))
+#elif defined(_MSC_VER)
+    __declspec(noinline)
+#endif
+    void rollback_rebucket(std::size_t source_bucket,
+                           std::uint64_t old_last,
+                           std::vector<Entry>& entries,
+                           std::size_t committed) noexcept {
+        // Only successfully appended entries are undone; rollback never
+        // allocates. Restore previous bucket and monotonic epoch afterwards.
+        for (std::size_t i = 0; i < committed; ++i)
+            buckets_[bucket(entries[i].first)].pop_back();
+        last_ = old_last;
+        buckets_[source_bucket] = std::move(entries);
+    }
     [[nodiscard]] std::size_t bucket(std::uint64_t key) const noexcept {
         return static_cast<std::size_t>(64 - std::countl_zero(key ^ last_));
     }
