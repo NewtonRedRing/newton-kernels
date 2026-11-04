@@ -11,6 +11,34 @@ std::size_t CsvParser::parse(std::string_view input, const RowCallback& on_row) 
     std::size_t cursor = 0;
     const auto size = input.size();
     while (cursor < size) {
+        // Quote-free physical records can be split with optimized character
+        // searches. Any quote before the line ending takes the strict path
+        // below, including correctly handling multiline quoted fields.
+        const auto eol = input.find_first_of("\r\n", cursor);
+        const auto line_end = eol == std::string_view::npos ? size : eol;
+        const auto line = input.substr(cursor, line_end - cursor);
+        if (line.find('"') == std::string_view::npos) {
+            std::size_t field_start = 0;
+            for (;;) {
+                const auto comma = line.find(',', field_start);
+                if (comma == std::string_view::npos) {
+                    row.emplace_back(line.substr(field_start));
+                    break;
+                }
+                row.emplace_back(line.substr(field_start, comma - field_start));
+                field_start = comma + 1;
+            }
+            on_row(row);
+            ++records;
+            row.clear();
+            cursor = line_end;
+            if (cursor < size) {
+                const char end = input[cursor++];
+                if (end == '\r' && cursor < size && input[cursor] == '\n')
+                    ++cursor;
+            }
+            continue;
+        }
         if (input[cursor] == '"') {
             const auto start = ++cursor;
             std::size_t segment = start;
