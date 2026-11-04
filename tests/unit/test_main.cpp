@@ -204,6 +204,53 @@ void test_analytics() {
         {1, 10}, {1, 20}, {3, 10}, {3, 20}},
         "optimized hash join failed full string equality");
 
+    // Exercise the dense histogram/CSR path and sparse fallback. Compare all
+    // row-identity pairs against an independent quadratic multiset oracle.
+    const auto verify_join = [&](const auto& lhs, const auto& rhs) {
+        std::vector<std::pair<int, int>> expected, actual;
+        for (const auto& a : lhs)
+            for (const auto& b : rhs)
+                if (a.first == b.first) expected.emplace_back(a.second, b.second);
+        std::size_t right_calls = 0, left_calls = 0;
+        hash_inner_join(lhs, rhs,
+            [&](const auto& row) { ++left_calls; return row.first; },
+            [&](const auto& row) { ++right_calls; return row.first; },
+            [&](const auto& a, const auto& b) {
+                check(&b == &rhs[static_cast<std::size_t>(b.second)],
+                      "dense join failed borrowed row identity");
+                actual.emplace_back(a.second, b.second);
+            });
+        std::sort(expected.begin(), expected.end());
+        std::sort(actual.begin(), actual.end());
+        check(expected == actual && right_calls == rhs.size() &&
+              left_calls == lhs.size(),
+              "dense or sparse join lost keys, duplicates or projection parity");
+    };
+    {
+        std::vector<std::pair<std::int64_t, int>> lhs, rhs;
+        for (int i = 0; i < 512; ++i) rhs.emplace_back(-23 + i % 47, i);
+        for (int i = 0; i < 301; ++i) lhs.emplace_back(-23 + i % 47, i);
+        verify_join(lhs, rhs); // crosses zero; dense histogram path
+    }
+    {
+        const auto base = std::numeric_limits<std::uint64_t>::max() - 37;
+        std::vector<std::pair<std::uint64_t, int>> lhs, rhs;
+        for (int i = 0; i < 384; ++i) rhs.emplace_back(base + i % 38, i);
+        for (int i = 0; i < 43; ++i) lhs.emplace_back(base + i % 38, i);
+        verify_join(lhs, rhs); // near UINT64_MAX, no signed overflow
+    }
+    {
+        std::vector<std::pair<std::int64_t, int>> lhs, rhs;
+        for (int i = 0; i < 257; ++i)
+            rhs.emplace_back(i % 2 ? std::numeric_limits<std::int64_t>::max()
+                                   : std::numeric_limits<std::int64_t>::min(), i);
+        for (int i = 0; i < 37; ++i)
+            lhs.emplace_back(i % 2 ? std::numeric_limits<std::int64_t>::max()
+                                   : std::numeric_limits<std::int64_t>::min(), i);
+        verify_join(lhs, rhs); // wide sparse fallback, exact equality
+    }
+
+
 }
 void test_memory() {
     newton::memory::AlignedBuffer<int, 64> buf(17);
