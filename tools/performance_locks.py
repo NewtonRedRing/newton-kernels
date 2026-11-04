@@ -28,7 +28,7 @@ ROUNDS = 5
 REPETITIONS = 11
 MAX_REGRESSION = 3.0
 MIN_SLOW_ROUNDS = 4
-MIN_PROMOTION_GAIN = 5.0
+MIN_PROMOTION_GAIN = 3.0
 
 
 def load(path: Path, *, missing_ok: bool = False) -> list[dict]:
