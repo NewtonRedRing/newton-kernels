@@ -7,7 +7,27 @@ std::size_t CsvParser::parse(std::string_view input, const RowCallback& on_row) 
     if (input.empty()) return 0;
     CsvRow row;
     row.reserve(8);
+    // Keep each field's string storage between rows; in fixed-width CSV this
+    // avoids repeated destruction/construction (and reuses long-field capacity).
+    // Only the logical field count changes at each completed record.
+    std::size_t fields = 0;
+    const auto append_field = [&](std::string_view value) {
+        if (fields < row.size()) row[fields].assign(value);
+        else row.emplace_back(value);
+        ++fields;
+    };
+    const auto append_decoded = [&](std::string&& value) {
+        if (fields < row.size()) row[fields] = std::move(value);
+        else row.emplace_back(std::move(value));
+        ++fields;
+    };
     std::size_t records = 0;
+    const auto emit_row = [&] {
+        row.resize(fields);
+        on_row(row);
+        ++records;
+        fields = 0;
+    };
     std::size_t cursor = 0;
     const auto size = input.size();
     while (cursor < size) {
@@ -29,9 +49,9 @@ std::size_t CsvParser::parse(std::string_view input, const RowCallback& on_row) 
                 } else {
                     if (has_escapes) {
                         decoded.append(input.data() + segment, quote - segment);
-                        row.emplace_back(std::move(decoded));
+                        append_decoded(std::move(decoded));
                     } else {
-                        row.emplace_back(input.substr(start, quote - start));
+                        append_field(input.substr(start, quote - start));
                     }
                     cursor = quote + 1;
                     if (cursor < size && input[cursor] != ',' && input[cursor] != '\r' && input[cursor] != '\n')
@@ -45,25 +65,21 @@ std::size_t CsvParser::parse(std::string_view input, const RowCallback& on_row) 
                    input[cursor] != '\n' && input[cursor] != '"') ++cursor;
             if (cursor < size && input[cursor] == '"')
                 throw std::invalid_argument("Quote in unquoted CSV field");
-            row.emplace_back(input.substr(start, cursor - start));
+            append_field(input.substr(start, cursor - start));
         }
         if (cursor == size) {
-            on_row(row);
-            ++records;
+            emit_row();
             break;
         }
         if (input[cursor] == ',') {
             ++cursor;
             if (cursor == size) {
-                row.emplace_back();
-                on_row(row);
-                ++records;
+                append_field({});
+                emit_row();
             }
         } else {
             if (input[cursor++] == '\r' && cursor < size && input[cursor] == '\n') ++cursor;
-            on_row(row);
-            ++records;
-            row.clear();
+            emit_row();
         }
     }
     return records;
