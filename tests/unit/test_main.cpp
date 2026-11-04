@@ -102,7 +102,7 @@ void test_csv() {
     const std::string mixed =
         "a,b,c,d\n"
         "single\n"
-        "x,\\"two\\"\\"quotes\\"\\"\\",z\n"
+        "x,\"two\"\"quotes\"\"\",z\n"
         ",,,\r\n"
         "q,\n"
         "long unquoted field whose value exceeds small-string capacity,tail\n"
@@ -114,7 +114,7 @@ void test_csv() {
     const std::vector<CsvRow> mixed_expected{
         {"a", "b", "c", "d"},
         {"single"},
-        {"x", "two\\"quotes\\"", "z"},
+        {"x", "two\"quotes\"", "z"},
         {"", "", "", ""},
         {"q", ""},
         {"long unquoted field whose value exceeds small-string capacity", "tail"},
