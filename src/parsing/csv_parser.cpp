@@ -3,6 +3,13 @@
 #include <utility>
 
 namespace newton::parsing {
+// Experimental: the historical and current CSV executables have byte-identical
+// parser source and same function size, but different hot function addresses.
+// Align this entry to an I-cache line on x86 to test layout sensitivity.
+// This is NOT a claimed optimization until paired benchmarks verify a win.
+#if defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
+__attribute__((aligned(64)))
+#endif
 std::size_t CsvParser::parse(std::string_view input, const RowCallback& on_row) const {
     if (input.empty()) return 0;
     CsvRow row;
