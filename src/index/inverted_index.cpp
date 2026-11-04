@@ -53,10 +53,41 @@ std::vector<InvertedIndex::DocumentId> InvertedIndex::search_all(
     for (std::size_t term = 1; term < lists.size() && !hits.empty(); ++term) {
         const auto& postings = *lists[term];
         std::size_t a = 0, b = 0, out = 0;
-        while (a < hits.size() && b < postings.size()) {
-            if (hits[a] == postings[b].id) { hits[out++] = hits[a++]; ++b; }
-            else if (hits[a] < postings[b].id) ++a;
-            else ++b;
+        // For highly skewed lists, walking the entire large postings vector
+        // is wasteful. Use exponential search plus binary search from the
+        // previously matched position; retain linear merge for balanced lists.
+        // Both paths preserve the exact sorted ID intersection and allocate
+        // no additional scratch. A conservative ratio minimizes regressions.
+        if (!hits.empty() && postings.size() / hits.size() >= 32) {
+            for (const auto id : hits) {
+                if (b == postings.size()) break;
+                if (postings[b].id < id) {
+                    const auto remaining = postings.size() - b;
+                    std::size_t step = 1;
+                    while (step < remaining && postings[b + step].id < id) {
+                        if (step > remaining / 2) { step = remaining; break; }
+                        step *= 2;
+                    }
+                    const auto upper = b + step + (step < remaining);
+                    const auto first = postings.begin() + static_cast<std::ptrdiff_t>(b);
+                    const auto last = postings.begin() + static_cast<std::ptrdiff_t>(upper);
+                    b = static_cast<std::size_t>(
+                        std::lower_bound(first, last, id,
+                            [](const Posting& p, DocumentId needle) {
+                                return p.id < needle;
+                            }) - postings.begin());
+                }
+                if (b < postings.size() && postings[b].id == id) {
+                    hits[out++] = id;
+                    ++b;
+                }
+            }
+        } else {
+            while (a < hits.size() && b < postings.size()) {
+                if (hits[a] == postings[b].id) { hits[out++] = hits[a++]; ++b; }
+                else if (hits[a] < postings[b].id) ++a;
+                else ++b;
+            }
         }
         hits.resize(out);
     }
