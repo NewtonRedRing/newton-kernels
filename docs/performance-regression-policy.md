@@ -57,7 +57,10 @@ reference** therefore protects approved improvements after they are merged.
   `main` regression-guard run emits
   `performance-evidence/high-water-proposals.json` as a **review-only**
   artifact. Proposals require at least a 3% paired-median gain against previous
-  `main` with at least four of five faster rounds. They are not promoted if
+  `main` with at least four of five faster rounds.
+  The generator rejects proposals if the protected production and benchmark
+  source trees are unchanged; favorable shared-runner noise on docs-only
+  changes must never be recorded as a winning kernel revision. They are not promoted if
   the complete guard, the six CSV pipeline cases, or any required CI job fail.
 - After reviewing the exact final merged SHA, correctness, original benchmark
   results, cross-platform tests and independent performance evidence, append

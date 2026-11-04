@@ -205,12 +205,16 @@ def propose(args: argparse.Namespace) -> int:
             report.get("case_count") != 22 or report.get("failed_cases") or
             len(report.get("results", [])) != 22):
         raise ValueError("Promotion requires a complete, matching, successful guard report")
+    protected_identical = report.get("protected_code_identical_to_base")
+    if type(protected_identical) is not bool:
+        raise ValueError("Promotion report missing protected-source comparison")
     known = {(entry["case"], entry["sha"]) for entry in entries}
     proposed = []
     for row in report["results"]:
         comp = row["comparisons"]["base"]
         changes = comp["round_changes_pct"]
-        if (row["status"] != "FAIL" and len(changes) == ROUNDS and
+        if (not protected_identical and row["status"] != "FAIL" and
+                len(changes) == ROUNDS and
                 comp["median_change_pct"] <= -MIN_PROMOTION_GAIN and
                 sum(x < 0 for x in changes) >= MIN_SLOW_ROUNDS and
                 (row["key"], args.candidate_sha) not in known):

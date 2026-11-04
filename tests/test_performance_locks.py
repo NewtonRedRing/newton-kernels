@@ -139,6 +139,7 @@ class PerformanceHighWaterTests(unittest.TestCase):
             "round_changes_pct": [-8.0, -8.0, -8.0, 2.0, 2.0],
         }
         report = {"revisions": {"candidate": SHA_B}, "case_count": 22,
+                  "protected_code_identical_to_base": False,
                   "failed_cases": [], "results": rows}
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -158,6 +159,14 @@ class PerformanceHighWaterTests(unittest.TestCase):
             self.assertEqual(locks.propose(opts), 0)
             self.assertEqual(json.loads(output.read_text(encoding="utf-8"))[
                 "proposed_locks"], [])
+            report["protected_code_identical_to_base"] = True
+            source.write_text(json.dumps(report), encoding="utf-8")
+            write(manifest, [])
+            self.assertEqual(locks.propose(opts), 0)
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8"))[
+                "proposed_locks"], [])
+            report["protected_code_identical_to_base"] = False
+            source.write_text(json.dumps(report), encoding="utf-8")
             opts.candidate_sha = SHA_A
             with self.assertRaises(ValueError):
                 locks.propose(opts)
