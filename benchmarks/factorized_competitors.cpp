@@ -2,6 +2,7 @@
 // construction and grouped aggregation. All three compute identical results.
 // No output-pair enumeration in any variant. No external runtime dependencies.
 #include <newton/analytics/factorized_dense_join.hpp>
+#include <newton/analytics/adaptive_factorized_join.hpp>
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -81,6 +82,14 @@ Result dense(const Fixture& f, std::size_t& scratch_bytes) {
         out.counts, out.sums);
     return out;
 }
+Result adaptive(const Fixture& f, std::size_t& scratch_bytes) {
+    Result out;
+    const auto result=newton::analytics::factorized_adaptive_join_group_sum_into(
+        f.left,f.groups,f.values,f.right,out.counts,out.sums,4u*1024u*1024u);
+    out.pairs=result.matching_pairs;
+    scratch_bytes=result.dense_scratch_bytes; // excludes staged outputs or sparse buckets
+    return out;
+}
 Result hash(const Fixture& f, std::size_t& scratch_bytes) {
     using Pair = std::pair<const std::uint64_t, std::size_t>;
     using Map = std::unordered_map<std::uint64_t, std::size_t,
@@ -154,13 +163,14 @@ int main(int argc, char** argv) {
                      "estimated_scratch_bytes,process_peak_rss_kib,checksum\n";
         for (const std::size_t width : {64u,256u,4096u,65536u,262144u,1048576u}) {
             const Fixture f = make_fixture(width, 0xb4511735u + width);
-            std::array<Measurement,3> metrics;
+            std::array<Measurement,4> metrics;
             auto run = [&](int variant, bool measured) {
                 std::size_t scratch=0;
                 allocation_calls = allocation_bytes = 0;
                 const auto start=std::chrono::steady_clock::now();
                 Result r = variant==0 ? dense(f,scratch) :
-                           variant==1 ? hash(f,scratch) : sorted(f,scratch);
+                           variant==1 ? hash(f,scratch) :
+                           variant==2 ? sorted(f,scratch) : adaptive(f,scratch);
                 const auto end=std::chrono::steady_clock::now();
                 if (measured) {
                     auto& m=metrics[variant];
@@ -172,32 +182,30 @@ int main(int argc, char** argv) {
                 return r;
             };
             const Result reference=run(1,false);
-            for (int i=0;i<3;++i)
+            for (int i=0;i<4;++i)
                 if (!(run(i,false)==reference))
                     throw std::runtime_error("Competitor result mismatch before measurement");
             // Three rotations, then reverse rotations; less order bias than
             // measuring a full set of one strategy followed by another.
             for (int i=0;i<repetitions;++i) {
-                const std::array<int,3> order = {
-                    i%3, (i+1)%3, (i+2)%3};
-                // Explicitly normalize the reverse cycle for all residues.
-                for (int k=0;k<3;++k) {
-                    const int variant = i%2 ? (i%3+3-k)%3 : order[k];
+                // Balanced rotation with both forward and reverse phases.
+                for (int k=0;k<4;++k) {
+                    const int variant = i%2 ? (i%4+4-k)%4 : (i+k)%4;
                     if (!(run(variant,true)==reference))
                         throw std::runtime_error("Competitor result drift during measurement");
                 }
             }
-            for (int variant=0;variant<3;++variant) {
+            for (int variant=0;variant<4;++variant) {
                 const auto& m=metrics[variant];
                 const auto p50=percentile(m.ms,0.5);
                 std::cout << "aggregate_only," << width << ","
-                          << (variant==0?"dense_histogram":variant==1?"reserved_std_hash":"sorted_equal_range")
+                          << (variant==0?"dense_histogram":variant==1?"reserved_std_hash":variant==2?"sorted_equal_range":"adaptive_budget_4m")
                           << "," << reference.pairs << "," << std::setprecision(8)
                           << p50 << "," << percentile(m.ms,0.95) << ","
                           << percentile(m.ms,0.99) << ","
                           << (f.left.size()+f.right.size())/(1000.0*p50) << ","
-                          << m.allocation_count / static_cast<std::size_t>(repetitions) << ","
-                          << m.allocated_bytes / static_cast<std::size_t>(repetitions) << ","
+                          << (variant==3 ? "NA" : std::to_string(m.allocation_count / static_cast<std::size_t>(repetitions))) << ","
+                          << (variant==3 ? "NA" : std::to_string(m.allocated_bytes / static_cast<std::size_t>(repetitions))) << ","
                           << m.scratch_bytes << "," << rss_kib() << ","
                           << digest(reference) << "\n";
             }
