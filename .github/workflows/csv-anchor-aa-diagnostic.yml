@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/csv-anchor-aa-diagnostic.yml'
       - 'tools/csv_anchor_aa_diagnostic.py'
+      - 'include/newton/graph/radix_heap.hpp'  # protect code-layout experiments
   workflow_dispatch:
 
 permissions:
