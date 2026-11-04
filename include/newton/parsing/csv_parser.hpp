@@ -103,6 +103,13 @@ public:
         requires (!std::same_as<std::remove_cvref_t<Callback>, RowCallback> &&
                   std::invocable<Callback&, const CsvRow&>)
     [[nodiscard]] std::size_t parse(std::string_view input, Callback&& on_row) const {
+        const RowCallback erased = [&on_row](const CsvRow& row) { std::invoke(on_row, row); };
+        return parse(input, erased);
+    }
+    // Explicit specialized callback path; output and exceptions remain exact.
+    template<class Callback>
+        requires std::invocable<Callback&, const CsvRow&>
+    [[nodiscard]] std::size_t parse_inline(std::string_view input, Callback&& on_row) const {
         return detail::parse_csv_impl(input, on_row);
     }
 };
