@@ -1,0 +1,75 @@
+name: Diagnostic A/A A/B index PR24 PR25
+on:
+  pull_request:
+    paths:
+      - 'tools/paired_aa_ab_diagnostic.py'
+      - '.github/workflows/diagnostic-aa-ab-index.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  paired-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      BASE_SHA: d5cddabdd5029650b8c438b3908816b1a723cac5
+      PR24_SHA: 6e256cfd6930af5bddf2906faa76a0b900c48897
+      PR25_SHA: e009ea71150ca653d602e669bb221104b059c9b0
+      ANCHOR_SHA: a3ccc65021181561aec1c8fe284bdeb7c8e1234c
+    steps:
+      - name: Check out diagnostic tool
+        uses: actions/checkout@v4
+        with:
+          path: diagnostic
+          persist-credentials: false
+      - name: Check out pinned current main
+        uses: actions/checkout@v4
+        with:
+          path: base
+          ref: ${{ env.BASE_SHA }}
+          persist-credentials: false
+      - name: Check out pinned PR 24 source
+        uses: actions/checkout@v4
+        with:
+          path: pr24
+          ref: ${{ env.PR24_SHA }}
+          persist-credentials: false
+      - name: Check out pinned PR 25 source
+        uses: actions/checkout@v4
+        with:
+          path: pr25
+          ref: ${{ env.PR25_SHA }}
+          persist-credentials: false
+      - name: Check out published anchor
+        uses: actions/checkout@v4
+        with:
+          path: anchor
+          ref: ${{ env.ANCHOR_SHA }}
+          persist-credentials: false
+      - name: Build identical-source A/A controls and A/B candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          for label in base_a base_b pr24 pr25 anchor; do
+            source="$label"
+            if [[ "$label" == base_a || "$label" == base_b ]]; then source=base; fi
+            cmake -S "$source" -B "build-$label" -DCMAKE_BUILD_TYPE=Release \
+              -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+              -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
+              -DNEWTON_COMP_BENCH_WITH_BOOST=OFF -DNEWTON_COMP_BENCH_WITH_VINCE=OFF
+            cmake --build "build-$label" \
+              --target newton_compare newton_compare_extended --parallel 2
+          done
+      - name: Run interleaved same-host A/A and paired A/B controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=diagnostic/tools:base/tools python3 diagnostic/tools/paired_aa_ab_diagnostic.py \
+            --root . --out aa-ab-evidence --rounds 5 --repetitions 11
+      - name: Upload raw case-by-case controls and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-pr24-pr25-aa-ab-${{ github.run_id }}-${{ github.run_attempt }}
+          path: aa-ab-evidence/
+          if-no-files-found: warn
