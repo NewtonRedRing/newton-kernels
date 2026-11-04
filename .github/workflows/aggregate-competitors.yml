@@ -1,0 +1,58 @@
+name: Aggregate-only competitor research (non-blocking)
+
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/factorized_competitors.cpp'
+      - 'benchmarks/CMakeLists.txt'
+      - '.github/workflows/aggregate-competitors.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  competitive-screen:
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exactly matching candidate and comparison code
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-screen -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER="${{ matrix.compiler }}" \
+            -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+            -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=OFF
+          cmake --build build-screen --target newton_factorized_competitors_bench --parallel 2
+      - name: Run balanced equivalent aggregate competitors and record telemetry
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf 'compiler=%s\n' "${{ matrix.compiler }}" | tee evidence/provenance.txt
+          "${{ matrix.compiler }}" --version | head -n 1 | tee -a evidence/provenance.txt
+          uname -a | tee -a evidence/provenance.txt
+          grep 'model name' /proc/cpuinfo | head -n 1 | tee -a evidence/provenance.txt
+          python3 - <<'PY' | tee -a evidence/provenance.txt
+          import os
+          print("affinity:",sorted(os.sched_getaffinity(0)))
+          PY
+          cpu=$(python3 -c 'import os; print(min(os.sched_getaffinity(0)))')
+          /usr/bin/time -v taskset -c "$cpu" \
+            ./build-screen/benchmarks/newton_factorized_competitors_bench 63 \
+            > evidence/comparison.csv 2> evidence/process-time.txt
+          cat evidence/comparison.csv
+          cat evidence/process-time.txt
+      - name: Keep unfiltered experimental evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregate-competitor-${{ matrix.compiler }}-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
