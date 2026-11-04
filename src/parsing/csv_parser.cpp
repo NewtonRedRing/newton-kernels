@@ -74,7 +74,7 @@ std::size_t CsvParser::parse(std::string_view input, const RowCallback& on_row) 
         if (input[cursor] == ',') {
             ++cursor;
             if (cursor == size) {
-                append_field({});
+                append_field(input.substr(cursor, 0));
                 emit_row();
             }
         } else {
