@@ -11,6 +11,12 @@ bool word_char(unsigned char c) noexcept {
 }
 std::vector<std::string> tokens(std::string_view s) {
     std::vector<std::string> out;
+    // A capped token-count hint amortizes vector growth for common short
+    // documents without preallocating in proportion to huge input buffers.
+    // The exact tokenization semantics and allocation-failure behavior remain
+    // unchanged: this only reserves storage before parsing any content.
+    if (!s.empty())
+        out.reserve(std::min<std::size_t>(64, s.size() / 6 + 1));
     std::string token;
     for (unsigned char c : s) {
         if (word_char(c)) token.push_back((c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : static_cast<char>(c));
