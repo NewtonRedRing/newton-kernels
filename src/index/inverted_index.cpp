@@ -19,17 +19,45 @@ std::vector<std::string> tokens(std::string_view s) {
     if (!token.empty()) out.push_back(std::move(token));
     return out;
 }
+// Keep the recovery-only hash-table walk out of the insertion hot path.
+// The helper performs no allocations and removes only this uncommitted ID.
+template<class Terms>
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline, cold))
+#endif
+void rollback_uncommitted_document(Terms& terms,
+                                   const std::vector<std::string>& words,
+                                   std::uint32_t id) {
+    for (const auto& word : words) {
+        const auto it = terms.find(word);
+        if (it == terms.end()) continue;
+        auto& postings = it->second;
+        if (!postings.empty() && postings.back().id == id)
+            postings.pop_back();
+        if (postings.empty()) terms.erase(it);
+    }
+}
 } // namespace
 InvertedIndex::DocumentId InvertedIndex::add_document(std::string_view text) {
     if (documents_ >= std::numeric_limits<DocumentId>::max()) throw std::length_error("Too many documents");
     auto words = tokens(text);
     if (words.size() > std::numeric_limits<std::uint32_t>::max()) throw std::length_error("Document too long");
-    const auto id = static_cast<DocumentId>(documents_++);
-    for (std::uint32_t i = 0; i < words.size(); ++i) {
-        auto& postings = terms_[words[i]];
-        if (postings.empty() || postings.back().id != id) postings.push_back({id, {}});
-        postings.back().positions.push_back(i);
+    const auto id = static_cast<DocumentId>(documents_);
+    try {
+        for (std::uint32_t i = 0; i < words.size(); ++i) {
+            auto& postings = terms_[words[i]];
+            if (postings.empty() || postings.back().id != id)
+                postings.push_back({id, {}});
+            postings.back().positions.push_back(i);
+        }
+    } catch (...) {
+        rollback_uncommitted_document(terms_, words, id);
+        throw;
     }
+    // No document ID is consumed until the entire document is indexed.
+    ++documents_;
     return id;
 }
 std::vector<InvertedIndex::DocumentId> InvertedIndex::search_all(
