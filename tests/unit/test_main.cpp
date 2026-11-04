@@ -96,6 +96,66 @@ void test_csv() {
     check(parser.parse("", [](const CsvRow&) {}) == 0, "CSV empty");
     throws([&] { (void)parser.parse("\"bad", [](const CsvRow&) {}); }, "unclosed quote");
     throws([&] { (void)parser.parse("a\"b", [](const CsvRow&) {}); }, "invalid quote");
+
+    // Mixed-width records must never expose fields retained from a previous
+    // record. Alternating long/short values also exercises capacity reuse.
+    const std::string mixed =
+        "a,b,c,d\n"
+        "single\n"
+        "x,\"two\"\"quotes\"\"\",z\n"
+        ",,,\r\n"
+        "q,\n"
+        "long unquoted field whose value exceeds small-string capacity,tail\n"
+        "n\r";
+    std::vector<CsvRow> mixed_rows;
+    check(parser.parse(mixed, [&](const CsvRow& r) {
+        mixed_rows.push_back(r);
+    }) == 7, "CSV reused row count");
+    const std::vector<CsvRow> mixed_expected{
+        {"a", "b", "c", "d"},
+        {"single"},
+        {"x", "two\"quotes\"", "z"},
+        {"", "", "", ""},
+        {"q", ""},
+        {"long unquoted field whose value exceeds small-string capacity", "tail"},
+        {"n"}
+    };
+    check(mixed_rows == mixed_expected, "CSV field reuse leaked old values");
+    // ABI stability: the original compiled std::function overload must match
+    // the new compile-time callback specialization exactly, record by record.
+    std::vector<CsvRow> erased_rows;
+    const CsvParser::RowCallback erased = [&](const CsvRow& r) {
+        erased_rows.push_back(r);
+    };
+    check(parser.parse(mixed, erased) == mixed_rows.size() &&
+          erased_rows == mixed_rows,
+          "CSV type-erased and inlined callback parsers disagree");
+    // A callback observes the exact current record width, never the retained
+    // backing-vector length or a previous record's data.
+    for (std::size_t trial = 1; trial <= 400; ++trial) {
+        std::string text;
+        const auto width = trial % 9;
+        std::vector<std::string> expected;
+        for (std::size_t i = 0; i <= width; ++i) {
+            std::string value((i * 13 + trial) % 60, 'a' + static_cast<char>(i % 26));
+            if (i) text += ',';
+            if (i % 3 == 0) {
+                text += '"';
+                for (const char c : value) {
+                    text += c;
+                    if (c == '"') text += '"';
+                }
+                text += '"';
+            } else text += value;
+            expected.push_back(value);
+        }
+        text += trial % 2 ? "\r\n" : "\n";
+        std::size_t rows_seen = 0;
+        check(parser.parse(text, [&](const CsvRow& row) {
+            check(row == expected, "CSV varied-width field parity");
+            ++rows_seen;
+        }) == 1 && rows_seen == 1, "CSV one record with mixed field widths");
+    }
     std::vector<std::vector<std::string>> simple;
     for_each_delimited_record("a;b;\r\nc;;d\n", ';', [&](auto f) {
         simple.emplace_back(f.begin(), f.end());
