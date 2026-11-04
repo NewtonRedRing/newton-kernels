@@ -54,3 +54,9 @@ add_test(NAME newton_radix_heap_fault_tests COMMAND newton_radix_heap_fault_test
 # A diagnostic failure must not occupy a Windows runner for 25 minutes.
 # Every injected allocation offset remains covered.
 set_tests_properties(newton_radix_heap_fault_tests PROPERTIES TIMEOUT 120)
+
+# Portable and ISA-dispatched two-byte count correctness/fuzz-style tests.
+add_executable(newton_dual_byte_scan_tests unit/test_count_two.cpp)
+target_compile_features(newton_dual_byte_scan_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_dual_byte_scan_tests PRIVATE newton_simd)
+add_test(NAME newton_dual_byte_scan_tests COMMAND newton_dual_byte_scan_tests)
