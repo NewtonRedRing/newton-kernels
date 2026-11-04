@@ -100,13 +100,13 @@ void test_csv() {
     // Mixed-width records must never expose fields retained from a previous
     // record. Alternating long/short values also exercises capacity reuse.
     const std::string mixed =
-        "a,b,c,d\\n"
-        "single\\n"
-        "x,\\\"two\\\"\\\"quotes\\\"\\\"\\\",z\\n"
-        ",,,\\r\\n"
-        "q,\\n"
-        "long unquoted field whose value exceeds small-string capacity,tail\\n"
-        "n\\r";
+        "a,b,c,d\n"
+        "single\n"
+        "x,\\"two\\"\\"quotes\\"\\"\\",z\n"
+        ",,,\r\n"
+        "q,\n"
+        "long unquoted field whose value exceeds small-string capacity,tail\n"
+        "n\r";
     std::vector<CsvRow> mixed_rows;
     check(parser.parse(mixed, [&](const CsvRow& r) {
         mixed_rows.push_back(r);
@@ -114,7 +114,7 @@ void test_csv() {
     const std::vector<CsvRow> mixed_expected{
         {"a", "b", "c", "d"},
         {"single"},
-        {"x", "two\\\"quotes\\\"", "z"},
+        {"x", "two\\"quotes\\"", "z"},
         {"", "", "", ""},
         {"q", ""},
         {"long unquoted field whose value exceeds small-string capacity", "tail"},
@@ -140,7 +140,7 @@ void test_csv() {
             } else text += value;
             expected.push_back(value);
         }
-        text += trial % 2 ? "\\r\\n" : "\\n";
+        text += trial % 2 ? "\r\n" : "\n";
         std::size_t rows_seen = 0;
         check(parser.parse(text, [&](const CsvRow& row) {
             check(row == expected, "CSV varied-width field parity");
