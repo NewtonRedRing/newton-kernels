@@ -1,0 +1,113 @@
+name: CSV code-layout and compiler isolation (non-blocking)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/csv-layout-compiler-isolation.yml'
+      - 'tools/csv_layout_sweep.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-layouts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      MAIN_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      ANCHOR_SHA: a3ccc65021181561aec1c8fe284bdeb7c8e1234c
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: experiment
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          ref: ${{ env.MAIN_SHA }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          path: anchor
+          ref: ${{ env.ANCHOR_SHA }}
+          persist-credentials: false
+      - name: Create controlled variants (change ONLY parser-entry alignment)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for align in 32 64 128 256; do
+            cp -a current "variant-$align"
+            python3 - "$align" "variant-$align/src/parsing/csv_parser.cpp" <<'PY'
+          import pathlib,sys
+          alignment=sys.argv[1]
+          path=pathlib.Path(sys.argv[2])
+          src=path.read_text(encoding="utf8")
+          needle="std::size_t CsvParser::parse(std::string_view input, const RowCallback& on_row) const {"
+          if src.count(needle)!=1: raise RuntimeError("parser signature mismatch")
+          attr=f'#if defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))\n__attribute__((aligned({alignment})))\n#endif\n'
+          path.write_text(src.replace(needle,attr+needle),encoding="utf8")
+          PY
+          done
+      - name: Build all layouts with identical compiler, flags and benchmark fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          for name in current anchor variant-32 variant-64 variant-128 variant-256; do
+            cmake -S "$name" -B "build-$name" -DCMAKE_BUILD_TYPE=Release \
+              -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+              -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
+              -DNEWTON_COMP_BENCH_WITH_BOOST=OFF -DNEWTON_COMP_BENCH_WITH_VINCE=OFF
+            cmake --build "build-$name" --target newton_compare --parallel 2
+            printf '=== %s ===\n' "$name" >> evidence/binary-layout.txt
+            sha256sum "build-$name/benchmarks/competitors/newton_compare" \
+                      "build-$name/CMakeFiles/newton_parsing.dir/src/parsing/csv_parser.cpp.o" \
+                      >> evidence/binary-layout.txt
+            nm -C -S "build-$name/benchmarks/competitors/newton_compare" \
+              | grep 'newton::parsing::CsvParser::parse' >> evidence/binary-layout.txt || true
+            objdump -drwC "build-$name/CMakeFiles/newton_parsing.dir/src/parsing/csv_parser.cpp.o" \
+              > "evidence/$name-parser-objdump.txt"
+          done
+          c++ --version | head -n 1 | tee evidence/toolchain.txt
+          uname -a | tee -a evidence/toolchain.txt
+          head -n 30 evidence/binary-layout.txt
+      - name: Balanced A/A and randomized order hot-workload measurements
+        shell: bash
+        run: |
+          set -euo pipefail
+          cpu=$(python3 -c 'import os; print(min(os.sched_getaffinity(0)))')
+          /usr/bin/time -v taskset -c "$cpu" python3 experiment/tools/csv_layout_sweep.py \
+            --binary main_a build-current/benchmarks/competitors/newton_compare \
+            --binary main_b build-current/benchmarks/competitors/newton_compare \
+            --binary anchor build-anchor/benchmarks/competitors/newton_compare \
+            --binary align32 build-variant-32/benchmarks/competitors/newton_compare \
+            --binary align64 build-variant-64/benchmarks/competitors/newton_compare \
+            --binary align128 build-variant-128/benchmarks/competitors/newton_compare \
+            --binary align256 build-variant-256/benchmarks/competitors/newton_compare \
+            --rounds 24 --out evidence > evidence/sweep-summary.txt \
+            2> evidence/sweep-resource.txt
+          cat evidence/sweep-summary.txt
+          cat evidence/sweep-resource.txt
+      - name: Opportunistic hardware-counter availability (not zero if denied)
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v perf >/dev/null 2>&1; then
+            perf stat -e cycles,instructions,branches,branch-misses,cache-misses \
+              build-current/benchmarks/competitors/newton_compare \
+              --operation csv --implementation newton --size 100000 \
+              --queries 1 --seed 1332857405 --repetitions 11 \
+              > evidence/perf-current.stdout \
+              2> evidence/perf-current.txt || echo 'perf counters unavailable/denied' >> evidence/perf-current.txt
+          else
+            echo 'perf utility unavailable; hardware counters NOT measured' > evidence/perf-current.txt
+          fi
+      - name: Upload full diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csv-layout-isolation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/
+          if-no-files-found: warn
