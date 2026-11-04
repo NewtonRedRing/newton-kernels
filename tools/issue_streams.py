@@ -135,7 +135,7 @@ def consumer_check(record: dict) -> None:
     run_command(record, ["cmake", "--install", d, "--prefix", "stage-issue"])
     run_command(record, ["cmake", "-S", "tests/consumer",
                          "-B", "consumer-issue",
-                         "-DCMAKE_PREFIX_PATH=stage-issue"])
+                         "-DCMAKE_PREFIX_PATH=" + str((ROOT / "stage-issue").resolve())])
     run_command(record, ["cmake", "--build", "consumer-issue", "--parallel", "2"])
     run_command(record, ["ctest", "--test-dir", "consumer-issue",
                          "--output-on-failure"])
