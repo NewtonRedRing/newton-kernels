@@ -24,3 +24,9 @@ target_link_libraries(newton_pipeline_compare PRIVATE newton_parsing newton_anal
 add_executable(newton_factorized_dense_join_bench factorized_dense_join_bench.cpp)
 target_compile_features(newton_factorized_dense_join_bench PRIVATE cxx_std_20)
 target_link_libraries(newton_factorized_dense_join_bench PRIVATE newton_analytics)
+
+# Exact aggregate-only competitors; measures build+aggregate, p50/p95/p99,
+# throughput, tracked allocator traffic and scratch footprint separately.
+add_executable(newton_factorized_competitors_bench factorized_competitors.cpp)
+target_compile_features(newton_factorized_competitors_bench PRIVATE cxx_std_20)
+target_link_libraries(newton_factorized_competitors_bench PRIVATE newton_analytics)
