@@ -9,6 +9,20 @@ namespace newton::parsing {
 // Decimal integer. Rejects empty, signs and overflow; no whitespace skipping.
 inline std::optional<std::uint64_t> parse_ascii_uint64(std::string_view s) noexcept {
     if (s.empty()) return std::nullopt;
+    // Every unsigned decimal string of at most 19 digits fits in uint64_t,
+    // including the largest 19-digit value 9,999,999,999,999,999,999.
+    // Do not perform an unnecessary per-digit overflow check on the common
+    // short-number path (CSV group IDs, counts, timestamps, etc.).
+    // Longer strings still use the exact checked parser so leading zeros
+    // and the full UINT64_MAX boundary retain their original semantics.
+    if (s.size() <= 19) {
+        std::uint64_t result = 0;
+        for (const char c : s) {
+            if (c < '0' || c > '9') return std::nullopt;
+            result = result * 10 + static_cast<unsigned>(c - '0');
+        }
+        return result;
+    }
     std::uint64_t n = 0;
     for (const char c : s) {
         if (c < '0' || c > '9') return std::nullopt;
