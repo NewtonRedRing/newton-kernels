@@ -1,0 +1,63 @@
+name: CSV anchor A/A diagnostic (non-blocking research)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/csv-anchor-aa-diagnostic.yml'
+      - 'tools/csv_anchor_aa_diagnostic.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired-aa-isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      ANCHOR_SHA: a3ccc65021181561aec1c8fe284bdeb7c8e1234c
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: experiment
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          ref: ${{ env.BASE_SHA }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          path: anchor
+          ref: ${{ env.ANCHOR_SHA }}
+          persist-credentials: false
+      - name: Build current and anchor benchmarks with identical options
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in current anchor; do
+            cmake -S "$name" -B "build-$name" -DCMAKE_BUILD_TYPE=Release \
+              -DNEWTON_BUILD_TESTS=OFF -DNEWTON_BUILD_EXAMPLES=OFF \
+              -DNEWTON_BUILD_BENCHMARKS=ON -DNEWTON_EXTERNAL_BENCHMARKS=ON \
+              -DNEWTON_COMP_BENCH_WITH_BOOST=OFF -DNEWTON_COMP_BENCH_WITH_VINCE=OFF
+            cmake --build "build-$name" --target newton_compare --parallel 2
+          done
+          c++ --version | head -n 1
+          sha256sum build-current/benchmarks/competitors/newton_compare \
+                     build-anchor/benchmarks/competitors/newton_compare
+      - name: Balanced Latin-square A/A and current-vs-anchor CSV comparisons
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiment/tools/csv_anchor_aa_diagnostic.py \
+            --current build-current/benchmarks/competitors/newton_compare \
+            --anchor build-anchor/benchmarks/competitors/newton_compare \
+            --out csv-diagnostic-evidence --base-sha "$BASE_SHA" --rounds 12
+      - name: Upload raw samples, hashes and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csv-aa-${{ github.run_id }}-${{ github.run_attempt }}
+          path: csv-diagnostic-evidence/
+          if-no-files-found: warn
