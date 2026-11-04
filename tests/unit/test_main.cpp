@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -151,6 +152,24 @@ void test_analytics() {
     const std::vector<int> data{1, 1, 2};
     const auto groups = group_count(data, [](int n) { return n; });
     check(groups.at(1) == 2 && groups.at(2) == 1, "group count");
+    // Differential counts for empty, boundary-sized and duplicate-heavy
+    // inputs, including cardinalities on both sides of the reserve hint.
+    for (std::size_t n : {0u, 1u, 1023u, 1024u, 20000u, 200000u}) {
+        std::vector<std::uint32_t> rows(n);
+        std::unordered_map<std::uint32_t, std::size_t> expected;
+        for (std::size_t i = 0; i < n; ++i) {
+            const auto key = static_cast<std::uint32_t>((i * 2654435761ULL) % 1133);
+            rows[i] = key;
+            ++expected[key];
+        }
+        const auto actual = group_count(rows, [](std::uint32_t x) { return x; });
+        check(actual == expected, "bounded group pre-reserve changed counts");
+    }
+    const std::vector<std::string> labels{"same", "other", "same"};
+    const auto word_counts = group_count(labels, [](const std::string& x) { return x; });
+    check(word_counts.at("same") == 2 && word_counts.at("other") == 1,
+          "bounded group pre-reserve changed string keys");
+
     const std::vector<std::pair<int, int>> left{{1, 5}, {2, 6}};
     const std::vector<std::pair<int, int>> right{{1, 7}, {1, 8}, {9, 10}};
     int total = 0;
