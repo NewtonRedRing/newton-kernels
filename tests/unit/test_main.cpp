@@ -179,7 +179,7 @@ void test_analytics() {
             for (const auto& rhs : b)
                 if (lhs.first == rhs.first)
                     expected.emplace_back(lhs.second, rhs.second);
-        hash_inner_join_grouped(a, b, [](const auto& r) { return r.first; },
+        hash_inner_join(a, b, [](const auto& r) { return r.first; },
             [](const auto& r) { return r.first; },
             [&](const auto& lhs, const auto& rhs) {
                 actual.emplace_back(lhs.second, rhs.second);
@@ -193,7 +193,7 @@ void test_analytics() {
     const std::vector<std::pair<std::string, int>> words_right{
         {"same", 10}, {"same", 20}, {"other", 30}};
     std::vector<std::pair<int, int>> word_pairs;
-    hash_inner_join_grouped(words_left, words_right,
+    hash_inner_join(words_left, words_right,
         [](const auto& x) { return x.first; },
         [](const auto& x) { return x.first; },
         [&](const auto& a, const auto& b) {
