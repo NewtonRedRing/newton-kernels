@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0c1423"><meta name="description" content="NewtonKernels: Build your first kernel. A reproducible path from checkout to an installed CMake consumer. No mandatory dependency downloads or service setup."><title>Getting started | NewtonKernels Docs</title><link rel="stylesheet" href="../assets/docs.css"><script src="../assets/docs.js" defer></script></head>
+<body><a class="skip" href="#main">Skip to documentation</a><header class="top"><div class="top-inner"><a class="wordmark" href="../index.html">N<span>.</span> NewtonKernels</a><nav class="topnav" aria-label="Global navigation"><a href="../index.html">Benchmarks</a><a href="index.html" aria-current="page">Docs</a><a href="https://github.com/NewtonRedRing/newton-kernels">GitHub ↗</a></nav></div></header><div class="layout"><aside class="side" aria-label="Documentation navigation"><nav class="side-inner"><div class="side-label">Start here</div><a  href="index.html">Overview</a><a aria-current="page" href="getting-started.html">Getting started</a><div class="side-label">Reference</div><a  href="modules.html">Modules & APIs</a><a  href="architecture.html">Architecture</a><a  href="benchmarks.html">Benchmarks</a><div class="side-label">Project</div><a  href="contributing.html">Contributing</a><a  href="maintenance.html">Maintenance</a></nav></aside><main class="doc" id="main"><div class="breadcrumbs"><a href="index.html">Docs</a> / Getting started</div><p class="eyebrow">Start here / NewtonKernels 0.1</p><h1>Build your first kernel</h1><p class="lead">A reproducible path from checkout to an installed CMake consumer. No mandatory dependency downloads or service setup.</p>
+<h2 id="requirements">Requirements</h2><ul><li>CMake 3.21 or newer</li><li>A C++20 toolchain: GCC, Clang or MSVC</li><li>Supported host: Linux, macOS or Windows</li></ul>
+<h2 id="clone">1. Configure, build and test</h2><pre><code>git clone https://github.com/NewtonRedRing/newton-kernels.git
+cd newton-kernels
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_TESTS=ON -DNEWTON_BUILD_EXAMPLES=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure</code></pre><p>On multi-configuration generators, pass <code>--config Release</code> to build and <code>-C Release</code> to CTest. The <a href="https://github.com/NewtonRedRing/newton-kernels/tree/main/examples">examples directory</a> contains complete programs.</p>
+<h2 id="install">2. Install and consume</h2><pre><code>cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DNEWTON_BUILD_TESTS=OFF
+cmake --build build-release --parallel
+cmake --install build-release --prefix "$HOME/.local"</code></pre>
+<p>In your consuming <code>CMakeLists.txt</code>:</p><pre><code>find_package(NewtonKernels 0.1 CONFIG REQUIRED)
+target_link_libraries(your_app PRIVATE
+    NewtonKernels::parsing
+    NewtonKernels::memory)</code></pre><p>Set <code>CMAKE_PREFIX_PATH</code> to the chosen install prefix as necessary. Windows users can choose a writable prefix rather than the POSIX home path.</p>
+<h2 id="example">3. Parse CSV rows</h2><pre><code>#include &lt;newton/parsing/csv_parser.hpp&gt;
+#include &lt;string_view&gt;
+
+int main() {
+    newton::parsing::CsvParser parser;
+    parser.parse("name,value\nalpha,12\n",
+        [](const auto&amp; fields) {
+            // Process or copy fields within this callback.
+            (void)fields;
+        });
+}</code></pre><p>Owned decoded fields from the callback must not be assumed to outlive their documented scope. Borrowed record functions require the backing input to stay alive.</p>
+<h2 id="next">Next steps</h2><p>Read the <a href="modules.html">module reference</a>, <a href="architecture.html">ownership model</a> and <a href="benchmarks.html">benchmarking methodology</a> before using the library in latency-sensitive applications.</p><footer class="footer">NewtonKernels · MIT · Development preview · <a href="https://github.com/NewtonRedRing/newton-kernels/issues">Suggest a correction</a> · <a href="../index.html">Benchmark dashboard</a></footer></main></div></body></html>
