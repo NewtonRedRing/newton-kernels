@@ -46,6 +46,19 @@ jobs:
           c++ --version | head -n 1
           sha256sum build-current/benchmarks/competitors/newton_compare \
                      build-anchor/benchmarks/competitors/newton_compare
+      - name: Record executable symbols, alignment and disassembly for root cause
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p csv-diagnostic-evidence
+          for name in current anchor; do
+            binary="build-$name/benchmarks/competitors/newton_compare"
+            nm -n -C -S "$binary" > "csv-diagnostic-evidence/$name-symbols.txt"
+            objdump -d -C "$binary" > "csv-diagnostic-evidence/$name-disassembly.txt"
+            readelf -W -S "$binary" > "csv-diagnostic-evidence/$name-sections.txt"
+            echo "$name CSV parser symbol:"
+            grep -F 'newton::parsing::CsvParser::parse' "csv-diagnostic-evidence/$name-symbols.txt" | head -n 5 || true
+          done
       - name: Balanced Latin-square A/A and current-vs-anchor CSV comparisons
         shell: bash
         run: |
