@@ -54,3 +54,9 @@ add_test(NAME newton_radix_heap_fault_tests COMMAND newton_radix_heap_fault_test
 # A diagnostic failure must not occupy a Windows runner for 25 minutes.
 # Every injected allocation offset remains covered.
 set_tests_properties(newton_radix_heap_fault_tests PROPERTIES TIMEOUT 120)
+
+# Opt-in edge-weight specialized 0-1 BFS differential verification.
+add_executable(newton_zero_one_shortest_path_tests unit/test_zero_one_shortest_path.cpp)
+target_compile_features(newton_zero_one_shortest_path_tests PRIVATE cxx_std_20)
+target_link_libraries(newton_zero_one_shortest_path_tests PRIVATE newton_graph)
+add_test(NAME newton_zero_one_shortest_path_tests COMMAND newton_zero_one_shortest_path_tests)
