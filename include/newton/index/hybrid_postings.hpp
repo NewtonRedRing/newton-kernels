@@ -119,33 +119,66 @@ class SelectiveTermIndex {
 public:
     void add_query(std::string_view query) {
         if (documents_ || finalized_) throw std::logic_error("Queries must be declared first");
-        tokenize(query, [&](const std::string& token) {
-            if (!lookup_.contains(token)) {
-                lookup_.emplace(token, raw_.size());
+        const auto checkpoint = raw_.size();
+        try {
+            tokenize(query, [&](const std::string& token) {
+                if (lookup_.contains(token)) return;
+                // First create the corresponding posting list, then publish its
+                // index. Neither a failed allocation nor a failed hash insertion
+                // may leave a map entry referring beyond raw_.
                 raw_.emplace_back();
+                try {
+                    lookup_.emplace(token, raw_.size() - 1);
+                } catch (...) {
+                    raw_.pop_back();
+                    throw;
+                }
+            });
+        } catch (...) {
+            // Strong guarantee for the entire add_query() call. Erasing by
+            // iterator and popping vectors do not allocate.
+            for (auto it = lookup_.begin(); it != lookup_.end();) {
+                if (it->second >= checkpoint) it = lookup_.erase(it);
+                else ++it;
             }
-        });
+            while (raw_.size() > checkpoint) raw_.pop_back();
+            throw;
+        }
     }
     std::uint32_t add_document(std::string_view document) {
         if (finalized_) throw std::logic_error("Index already finalized");
         if (documents_ == std::numeric_limits<std::uint32_t>::max())
             throw std::length_error("Document ID overflow");
-        const auto id = documents_++;
-        tokenize(document, [&](const std::string& token) {
-            const auto it = lookup_.find(token);
-            if (it == lookup_.end()) return;
-            auto& ids = raw_[it->second];
-            if (ids.empty() || ids.back() != id) ids.push_back(id);
-        });
+        const auto id = documents_;
+        try {
+            tokenize(document, [&](const std::string& token) {
+                const auto it = lookup_.find(token);
+                if (it == lookup_.end()) return;
+                auto& ids = raw_[it->second];
+                if (ids.empty() || ids.back() != id) ids.push_back(id);
+            });
+        } catch (...) {
+            // The current document ID is not committed, and it can appear
+            // only at the end of an increasing posting list. Roll back
+            // all partially inserted term entries without allocating.
+            for (auto& ids : raw_)
+                if (!ids.empty() && ids.back() == id) ids.pop_back();
+            throw;
+        }
+        ++documents_;
         return id;
     }
     void finalize() {
         if (finalized_) return;
-        postings_.reserve(raw_.size());
+        // Build in isolation. If any bitmap/segment allocation fails, raw_
+        // remains intact and another finalize() attempt is safe.
+        std::vector<HybridPostings> candidate;
+        candidate.reserve(raw_.size());
         for (const auto& ids : raw_)
-            postings_.push_back(HybridPostings::from_sorted(ids, documents_));
-        raw_.clear();
-        raw_.shrink_to_fit();
+            candidate.push_back(HybridPostings::from_sorted(ids, documents_));
+        postings_.swap(candidate);
+        std::vector<std::vector<std::uint32_t>> released;
+        raw_.swap(released);
         finalized_ = true;
     }
     std::size_t search_all_into(std::string_view query,

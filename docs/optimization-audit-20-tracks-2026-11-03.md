@@ -1,5 +1,7 @@
 # Twenty-track algorithm optimization audit — November 3, 2026
 
+> **Track status:** This audit records hypotheses and validation requirements, not confirmed defects. See [resolution register](optimization-audit-20-tracks-resolution-register.md) and the GitHub audit issues #33–#52 for current verification. Proposed fixes remain gated by full CI and unmodified 22+6 performance checks.
+
 Baseline `main`: `b33078d3adce6f8979b9b22fbdc75a3a2f040fd3`. Each track below was source-inspected concurrently through the connected GitHub repository. This is an **initial source-level audit**, not a mathematical proof that every line has been verified. Changes must be independently tested, benchmarked and reviewed before merging.
 
 | # | Research track | Primary source | Findings / hypotheses | Required correctness gates |

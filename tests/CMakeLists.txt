@@ -54,3 +54,21 @@ add_test(NAME newton_radix_heap_fault_tests COMMAND newton_radix_heap_fault_test
 # A diagnostic failure must not occupy a Windows runner for 25 minutes.
 # Every injected allocation offset remains covered.
 set_tests_properties(newton_radix_heap_fault_tests PROPERTIES TIMEOUT 120)
+
+# Dedicated allocation-failure tests: isolated global new override must never
+# leak into the production library or other test executables.
+add_executable(newton_selective_fault_tests unit/test_selective_faults.cpp)
+target_compile_features(newton_selective_fault_tests PRIVATE cxx_std_20)
+# SelectiveTermIndex is header-only. Avoid a mismatched Debug STL ABI by
+# compiling this fault-injection executable without linking newton_index.
+target_include_directories(newton_selective_fault_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
+if(MSVC)
+  # MSVC Debug iterator proxies allocate inside noexcept STL constructors.
+  # Injected bad_alloc there terminates before any index rollback is tested.
+  # Regular Windows Debug tests still retain full iterator debugging.
+  target_compile_definitions(newton_selective_fault_tests PRIVATE
+    $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>)
+endif()
+add_test(NAME newton_selective_fault_tests COMMAND newton_selective_fault_tests)
+# Fail a hung fault-injection run promptly; preserve all failure offsets.
+set_tests_properties(newton_selective_fault_tests PROPERTIES TIMEOUT 120)
